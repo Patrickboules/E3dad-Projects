@@ -7,7 +7,8 @@ from github import Github
 st.set_page_config(
     layout="wide",
     page_title="مشاريع اعداد 2025",
-    page_icon="📊"
+    page_icon="📊",
+    initial_sidebar_state="collapsed"
 )
 st.title("📊 مشاريع اعداد 2025")
 
@@ -112,7 +113,7 @@ def save_response():
         st.error(f"حدث خطأ في حفظ البيانات على GitHub: {str(e)}")
         return False
 
-# Custom CSS for the options
+# Custom CSS for mobile responsiveness
 st.markdown("""
 <style>
     :root {
@@ -131,7 +132,7 @@ st.markdown("""
     
     .option-container {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         margin: 8px 0;
         padding: 12px 15px;
         border-radius: 10px;
@@ -140,6 +141,7 @@ st.markdown("""
         background-color: white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         border: 1px solid #e1e1e1;
+        width: 100%;
     }
     
     .option-container:hover {
@@ -160,21 +162,28 @@ st.markdown("""
         background-color: var(--disabled-color);
     }
     
+    .option-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
     .option-text {
-        flex-grow: 1;
-        padding: 0 15px;
         text-align: right;
         font-size: 16px;
         color: var(--text-color);
+        width: 100%;
+        padding: 5px 0;
     }
     
     .progress-container {
-        width: 120px;
+        width: 100%;
         height: 20px;
         background-color: #e0e0e0;
         border-radius: 10px;
         overflow: hidden;
-        margin-right: 15px;
         box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
     }
     
@@ -191,7 +200,6 @@ st.markdown("""
     
     .option-number {
         font-weight: bold;
-        min-width: 30px;
         font-size: 16px;
         color: var(--text-color);
     }
@@ -199,7 +207,6 @@ st.markdown("""
     .count-display {
         font-size: 13px;
         color: var(--count-color);
-        margin-left: 10px;
         font-weight: 500;
     }
     
@@ -214,6 +221,7 @@ st.markdown("""
         border-radius: 8px;
         padding: 8px 16px;
         transition: all 0.3s;
+        width: 100%;
     }
     
     .stButton>button:hover {
@@ -236,6 +244,35 @@ st.markdown("""
         padding: 10px;
         border-radius: 6px;
     }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .option-text {
+            font-size: 14px;
+        }
+        
+        .option-number, .count-display {
+            font-size: 14px;
+        }
+        
+        .progress-container {
+            height: 15px;
+        }
+        
+        .stButton>button {
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        .stTextInput>div>div>input {
+            font-size: 14px;
+        }
+    }
+    
+    /* Hide fullscreen button */
+    .stApp .fullScreenFrame > div {
+        display: none;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -253,12 +290,14 @@ def create_option(num, text):
         <div class="option-container {'selected' if selected else ''} {'disabled' if disabled and not selected else ''}" 
              id="option_{num}"
              onclick="handleClick({num})">
-            <div class="option-number">{num}.</div>
+            <div class="option-header">
+                <div class="option-number">{num}.</div>
+                <div class="count-display">({count}/{max_limit})</div>
+            </div>
+            <div class="option-text">{text}</div>
             <div class="progress-container">
                 <div class="progress-bar {'complete' if count >= max_limit else ''}" style="width:{progress}%"></div>
             </div>
-            <div class="option-text">{text}</div>
-            <div class="count-display">({count}/{max_limit})</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -283,6 +322,24 @@ def option_click_js():
             }
         });
     }
+    
+    // Make the app more mobile-friendly
+    function adjustForMobile() {
+        if (window.innerWidth <= 768) {
+            // Adjust padding for mobile
+            document.querySelector('.main').style.padding = '10px';
+            
+            // Make sure inputs are full width
+            const inputs = document.querySelectorAll('.stTextInput input');
+            inputs.forEach(input => {
+                input.style.width = '100%';
+            });
+        }
+    }
+    
+    // Run on load and resize
+    window.addEventListener('load', adjustForMobile);
+    window.addEventListener('resize', adjustForMobile);
     </script>
     """
 
@@ -326,12 +383,9 @@ def main():
     
     st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
     
-    # Create 3 columns for responsive layout
-    cols = st.columns(3)
-    
-    for i, (num, text) in enumerate(options.items()):
-        with cols[i % 3]:
-            create_option(num, text)
+    # Create single column layout for mobile
+    for num, text in options.items():
+        create_option(num, text)
     
     html(option_click_js(), height=0)
     
