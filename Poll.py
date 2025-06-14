@@ -54,7 +54,7 @@ options = {
 }
 
 # Load existing responses from GitHub
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=5)  # Cache for 5 minutes
 def load_topic_counts():
     topic_counts = {num: 0 for num in options.keys()}
     
