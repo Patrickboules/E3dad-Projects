@@ -276,14 +276,6 @@ def save_response():
         return False
 
 def main():
-    # Admin access section
-    st.sidebar.markdown("## 🛠️ وضع المشرف")
-    admin_password = st.sidebar.text_input("كلمة المرور", type="password")
-    is_admin = admin_password == "your_secret_password"  # Replace with your actual password
-
-    if admin_password and not is_admin:
-        st.sidebar.error("كلمة المرور غير صحيحة")
-
     if not st.session_state.submitted:
         # Name input section
         with st.container():
@@ -319,23 +311,8 @@ def main():
             """,
             unsafe_allow_html=True
         )
-
-        if is_admin:
-            st.markdown("---")
-            st.markdown("### 🔒 تحميل بيانات المشاركين (للمشرف فقط)")
-            try:
-                with open("responses.json", "r", encoding="utf-8") as f:
-                    json_data = f.read()
-                st.download_button(
-                    label="📥 تحميل ملف JSON",
-                    data=json_data,
-                    file_name="responses.json",
-                    mime="application/json"
-                )
-            except Exception as e:
-                st.error(f"حدث خطأ أثناء تحميل الملف: {str(e)}")
         return
-
+    
     st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
     
     # Create 3 columns for responsive layout
