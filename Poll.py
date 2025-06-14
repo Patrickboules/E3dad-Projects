@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit.components.v1 import html
 import json
-import os
+from github import Github
 
 # Configure page
 st.set_page_config(
@@ -10,11 +10,6 @@ st.set_page_config(
     page_icon="📊"
 )
 st.title("📊 مشاريع اعداد 2025")
-
-# Initialize JSON file if not exists
-if not os.path.exists("responses.json"):
-    with open("responses.json", 'w', encoding='utf-8') as f:
-        json.dump([], f, ensure_ascii=False)
 
 # Initialize session state
 if 'selected' not in st.session_state:
@@ -27,6 +22,10 @@ if 'last_name' not in st.session_state:
     st.session_state.last_name = ""
 if 'temp_counts' not in st.session_state:
     st.session_state.temp_counts = {}
+
+# GitHub configuration
+REPO_NAME = "Patrickboules/E3dad-Projects"
+FILE_PATH = "responses.json"
 
 # Define all 22 options
 options = {
@@ -54,21 +53,24 @@ options = {
     22: "الارتباط ضرورة ولكن بشروط"
 }
 
-# Load existing responses and count topic frequencies
+# Load existing responses from GitHub
+@st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_topic_counts():
-    filename = "responses.json"
     topic_counts = {num: 0 for num in options.keys()}
     
     try:
-        with open(filename, 'r', encoding='utf-8') as f:
-            existing_data = json.load(f)
-            for response in existing_data:
-                for num, text in options.items():
-                    if text == response["Topic"]:
-                        topic_counts[num] += 1
-                        break
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo(REPO_NAME)
+        file = repo.get_contents(FILE_PATH)
+        existing_data = json.loads(file.decoded_content.decode())
+        
+        for response in existing_data:
+            for num, text in options.items():
+                if text == response.get("Topic"):
+                    topic_counts[num] += 1
+                    break
     except Exception as e:
-        st.error(f"حدث خطأ في تحميل البيانات: {str(e)}")
+        st.error(f"حدث خطأ في تحميل البيانات من GitHub: {str(e)}")
     return topic_counts
 
 # Combine saved counts with temporary selections
@@ -78,6 +80,37 @@ def get_combined_counts():
     for num, count in st.session_state.temp_counts.items():
         combined[num] += count
     return combined
+
+# Save response to GitHub
+def save_response():
+    response = {
+        "First Name": st.session_state.first_name,
+        "Last Name": st.session_state.last_name,
+        "Topic": options[st.session_state.selected]
+    }
+    
+    try:
+        g = Github(st.secrets["GITHUB_TOKEN"])
+        repo = g.get_repo(REPO_NAME)
+        file = repo.get_contents(FILE_PATH)
+        
+        # Get existing data
+        existing_data = json.loads(file.decoded_content.decode())
+        existing_data.append(response)
+        
+        # Update file on GitHub
+        repo.update_file(
+            path=FILE_PATH,
+            message=f"إضافة اختيار جديد من {st.session_state.first_name}",
+            content=json.dumps(existing_data, indent=4, ensure_ascii=False),
+            sha=file.sha
+        )
+        
+        st.session_state.temp_counts = {}
+        return True
+    except Exception as e:
+        st.error(f"حدث خطأ في حفظ البيانات على GitHub: {str(e)}")
+        return False
 
 # Custom CSS for the options
 st.markdown("""
@@ -252,28 +285,6 @@ def option_click_js():
     }
     </script>
     """
-
-def save_response():
-    response = {
-        "First Name": st.session_state.first_name,
-        "Last Name": st.session_state.last_name,
-        "Topic": options[st.session_state.selected]
-    }
-    
-    try:
-        with open("responses.json", 'r', encoding='utf-8') as f:
-            existing_data = json.load(f)
-        
-        existing_data.append(response)
-        
-        with open("responses.json", 'w', encoding='utf-8') as f:
-            json.dump(existing_data, f, indent=4, ensure_ascii=False)
-        
-        st.session_state.temp_counts = {}
-        return True
-    except Exception as e:
-        st.error(f"حدث خطأ في حفظ البيانات: {str(e)}")
-        return False
 
 def main():
     if not st.session_state.submitted:
