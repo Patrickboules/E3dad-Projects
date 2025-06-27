@@ -696,10 +696,17 @@ def phone_verification_page():
                     st.session_state.form['phone_verified'] = True
                     st.rerun()
                 
-                return
             else:
-                # New phone number - only show "Start new registration"
-                st.session_state.form['phone_number'] = validated_phone
+                # New phone number - automatically redirect
+                st.session_state.form.update({
+                    'phone_number': validated_phone,
+                    'first_name': '',
+                    'last_name': '',
+                    'selected_option': None,
+                    'custom_topic': '',
+                    'is_custom_selected': False,
+                    'phone_verified': True
+                })
                 
                 # Check if user has reached max selections
                 _, user_selections = process_responses(existing_data)
@@ -712,18 +719,8 @@ def phone_verification_page():
                     </div>
                     """, unsafe_allow_html=True)
                 else:
-                    if st.button("بدء تسجيل جديد", 
-                               use_container_width=True,
-                               type="primary"):
-                        st.session_state.form.update({
-                            'first_name': '',
-                            'last_name': '',
-                            'selected_option': None,
-                            'custom_topic': '',
-                            'is_custom_selected': False,
-                            'phone_verified': True
-                        })
-                        st.rerun()
+                    st.rerun()  # Automatically redirect to choices page
+                    
         else:
             st.error("""
             <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
