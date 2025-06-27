@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit.components.v1 import html
 import json
 from github import Github
+import re
 
 # Configure page - disable dark mode
 st.set_page_config(
@@ -214,6 +215,16 @@ st.markdown("""
         border: 1px solid #E0E0E0 !important;
     }
     
+    /* Phone verification container */
+    .phone-container {
+        max-width: 500px;
+        margin: 0 auto;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        background-color: white;
+    }
+    
     /* Responsive adjustments */
     @media (max-width: 768px) {
         .option-text {
@@ -244,6 +255,10 @@ st.markdown("""
         .custom-topic-input button {
             width: 100% !important;
         }
+        
+        .phone-container {
+            padding: 20px;
+        }
     }
     
     /* Disable dark mode */
@@ -271,13 +286,16 @@ st.title("📊 مشاريع اعداد 2025")
 def initialize_session_state():
     if 'form' not in st.session_state:
         st.session_state.form = {
+            'phone_verified': False,
+            'phone_number': '',
             'selected_option': None,
             'custom_topic': '',
             'is_custom_selected': False,
             'first_name': '',
             'last_name': '',
             'submitted': False,
-            'temp_counts': {}
+            'temp_counts': {},
+            'user_selections': {}
         }
 
 initialize_session_state()
@@ -312,40 +330,71 @@ options = {
     22: "الارتباط ضرورة ولكن بشروط"
 }
 
+# Validate Egyptian phone number
+def validate_egyptian_phone(phone):
+    # Remove any non-digit characters
+    phone = re.sub(r'\D', '', phone)
+    # Check if it's a valid Egyptian mobile number (starts with 01 and has 11 digits)
+    if len(phone) == 11 and phone.startswith('01'):
+        return phone
+    return None
+
 # Load existing responses from GitHub
 @st.cache_data(ttl=5)
-def load_topic_counts():
-    topic_counts = {num: 0 for num in options.keys()}
+def load_responses():
     try:
         g = Github(st.secrets["GITHUB_TOKEN"])
         repo = g.get_repo(REPO_NAME)
         file = repo.get_contents(FILE_PATH)
         existing_data = json.loads(file.decoded_content.decode())
-        
-        for response in existing_data:
-            for num, text in options.items():
-                if text == response.get("Topic"):
-                    topic_counts[num] += 1
-                    break
+        # Ensure we return a dictionary even if the file is empty
+        return existing_data if isinstance(existing_data, dict) else {}
     except Exception as e:
         st.error(f"حدث خطأ في تحميل البيانات من GitHub: {str(e)}")
-    return topic_counts
+        return {}
 
-# Combine saved counts with temporary selections
-def get_combined_counts():
-    saved_counts = load_topic_counts()
-    combined = saved_counts.copy()
-    for num, count in st.session_state.form['temp_counts'].items():
-        combined[num] += count
-    return combined
+# Calculate topic counts and user selections
+def process_responses(existing_data):
+    topic_counts = {num: 0 for num in options.keys()}
+    user_selections = {}
+    
+    # Handle case where existing_data is a list (old format)
+    if isinstance(existing_data, list):
+        for entry in existing_data:
+            phone = entry.get("Phone", "")
+            if phone:
+                if phone not in user_selections:
+                    user_selections[phone] = []
+                
+                # Count topic selections
+                topic = entry.get("Topic", "")
+                for num, text in options.items():
+                    if text == topic:
+                        topic_counts[num] += 1
+                        user_selections[phone].append(num)
+                        break
+    # Handle case where existing_data is a dictionary (new format)
+    elif isinstance(existing_data, dict):
+        for phone, selection_data in existing_data.items():
+            if phone not in user_selections:
+                user_selections[phone] = []
+            
+            # Count topic selections
+            topic = selection_data.get("Topic", "")
+            for num, text in options.items():
+                if text == topic:
+                    topic_counts[num] += 1
+                    user_selections[phone].append(num)
+                    break
+    
+    return topic_counts, user_selections
 
 # Save response to GitHub
 def save_response():
-    topic = options[st.session_state.form['selected_option']] if st.session_state.form['selected_option'] else st.session_state.form['custom_topic']
-    response = {
+    response_data = {
         "First Name": st.session_state.form['first_name'],
         "Last Name": st.session_state.form['last_name'],
-        "Topic": topic
+        "Topic": options[st.session_state.form['selected_option']] if st.session_state.form['selected_option'] else st.session_state.form['custom_topic']
     }
     
     try:
@@ -354,11 +403,26 @@ def save_response():
         file = repo.get_contents(FILE_PATH)
         
         existing_data = json.loads(file.decoded_content.decode())
-        existing_data.append(response)
+        
+        # Convert list to dictionary if needed
+        if isinstance(existing_data, list):
+            new_data = {}
+            for entry in existing_data:
+                phone = entry.get("Phone", "")
+                if phone:
+                    new_data[phone] = {
+                        "First Name": entry.get("First Name", ""),
+                        "Last Name": entry.get("Last Name", ""),
+                        "Topic": entry.get("Topic", "")
+                    }
+            existing_data = new_data
+        
+        # Update or create phone entry
+        existing_data[st.session_state.form['phone_number']] = response_data
         
         repo.update_file(
             path=FILE_PATH,
-            message=f"إضافة اختيار جديد من {st.session_state.form['first_name']}",
+            message=f"إضافة اختيار جديد من {st.session_state.form['phone_number']}",
             content=json.dumps(existing_data, indent=4, ensure_ascii=False),
             sha=file.sha
         )
@@ -399,12 +463,17 @@ def handle_custom_topic():
     st.session_state.form['is_custom_selected'] = bool(custom_text)
     st.rerun()
 
-def create_option(num, text):
+def create_option(num, text, user_selections):
     combined_counts = get_combined_counts()
     count = combined_counts.get(num, 0)
     max_limit = 3
     progress = (count / max_limit) * 100
-    disabled = count >= max_limit
+    
+    # Check if user has already selected this topic (max 3 per phone)
+    phone = st.session_state.form['phone_number']
+    user_topics = user_selections.get(phone, [])
+    user_topic_count = user_topics.count(num)
+    disabled = count >= max_limit or user_topic_count >= 3
     
     # Determine if this option is selected
     selected = (st.session_state.form['selected_option'] == num and 
@@ -418,7 +487,7 @@ def create_option(num, text):
              onclick="handleClick({num})">
             <div class="option-header">
                 <div class="option-number">{num}.</div>
-                <div class="count-display">({count}/{max_limit})</div>
+                <div class="count-display">({count}/{max_limit}) - اختياراتك: {user_topic_count}/3</div>
             </div>
             <div class="option-text">{text}</div>
             <div class="progress-container">
@@ -488,7 +557,52 @@ def option_click_js():
     </script>
     """
 
-def main():
+def phone_verification_page():
+    st.markdown("""
+    <div class="phone-container">
+        <h2 style="text-align: center; margin-bottom: 30px;">الرجاء إدخال رقم الهاتف</h2>
+        <p style="text-align: center; margin-bottom: 20px;">
+            سيتم استخدام رقم الهاتف للتحقق من هويتك وتتبع اختياراتك
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    phone = st.text_input(
+        "رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)",
+        key="phone_input",
+        placeholder="أدخل رقم هاتفك (مثال: 01234567890)",
+        max_chars=11
+    )
+    
+    if st.button("تأكيد رقم الهاتف", use_container_width=True):
+        validated_phone = validate_egyptian_phone(phone)
+        if validated_phone:
+            st.session_state.form['phone_number'] = validated_phone
+            
+            # Load existing data and check if user has reached max selections
+            existing_data = load_responses()
+            _, user_selections = process_responses(existing_data)
+            user_topics = user_selections.get(validated_phone, [])
+            
+            if len(user_topics) >= 3:
+                st.error("لقد قمت بالفعل باختيار 3 مواضيع كحد أقصى لكل رقم هاتف.")
+            else:
+                st.session_state.form['phone_verified'] = True
+                st.rerun()
+        else:
+            st.error("الرجاء إدخال رقم هاتف مصري صحيح (يبدأ بـ 01 ويحتوي على 11 رقمًا)")
+
+def get_combined_counts():
+    existing_data = load_responses()
+    topic_counts, _ = process_responses(existing_data)
+    
+    # Combine with temporary selections
+    combined = topic_counts.copy()
+    for num, count in st.session_state.form['temp_counts'].items():
+        combined[num] += count
+    return combined
+
+def main_form():
     if not st.session_state.form['submitted']:
         with st.container():
             st.subheader("المجموعة")
@@ -524,6 +638,7 @@ def main():
             <div class="success-message">
                 <h3>شكرًا لك {st.session_state.form['first_name']}!</h3>
                 <p>لقد اخترت: <strong>{topic}</strong></p>
+                <p>رقم الهاتف: <strong>{st.session_state.form['phone_number']}</strong></p>
             </div>
             """,
             unsafe_allow_html=True
@@ -532,8 +647,12 @@ def main():
     
     st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
     
+    # Load user selections
+    existing_data = load_responses()
+    _, user_selections = process_responses(existing_data)
+    
     for num, text in options.items():
-        create_option(num, text)
+        create_option(num, text, user_selections)
     
     html(option_click_js(), height=0)
     st.markdown("---")
@@ -574,6 +693,12 @@ def main():
                  key="submit_btn",
                  use_container_width=True,
                  disabled=True)
+
+def main():
+    if not st.session_state.form['phone_verified']:
+        phone_verification_page()
+    else:
+        main_form()
 
 if __name__ == "__main__":
     main()
