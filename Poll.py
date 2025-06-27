@@ -755,61 +755,61 @@ def main_form():
             _, user_selections = process_responses(existing_data)
             
             # 2. Render form inputs
-            st.subheader("المجموعة")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
-                st.session_state.form['first_name'] = st.text_input(
+    st.subheader("المجموعة")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
+        st.session_state.form['first_name'] = st.text_input(
                     "اسم المخدوم رقم 1", 
                     value=st.session_state.form.get('first_name', ''),
                     key="first_name_input_" + str(st.session_state.last_refresh),  # Unique key
                     label_visibility="collapsed",
                     placeholder="أدخل الاسم الأول"
                 )
-            with col2:
-                st.markdown("اسم المخدوم رقم 2")
-                st.session_state.form['last_name'] = st.text_input(
-                    "اسم المخدوم رقم 2", 
+    with col2:
+        st.markdown("اسم المخدوم رقم 2")
+        st.session_state.form['last_name'] = st.text_input(
+                                "اسم المخدوم رقم 2", 
                     value=st.session_state.form.get('last_name', ''),
                     key="last_name_input_" + str(st.session_state.last_refresh),  # Unique key
                     label_visibility="collapsed",
                     placeholder="أدخل الاسم الثاني"
                 )
             
-            create_custom_topic_input()
-            st.markdown("---")
+        create_custom_topic_input()
+        st.markdown("---")
             
-            # 3. Topic selection
-            st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+        # 3. Topic selection
+        st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+        
+        for num, text in options.items():
+            create_option(num, text, user_selections)
             
-            for num, text in options.items():
-                create_option(num, text, user_selections)
-            
-            html(option_click_js(), height=0)
-            st.markdown("---")
+        html(option_click_js(), height=0)
+        st.markdown("---")
             
             # 4. Auto-refresh logic
-            if time.time() - st.session_state.last_refresh > 5:  # Every 5 seconds
-                st.session_state.last_refresh = time.time()
-                st.cache_data.clear()
-                st.experimental_rerun()
+        if time.time() - st.session_state.last_refresh > 5:  # Every 5 seconds
+            st.session_state.last_refresh = time.time()
+            st.cache_data.clear()
+            st.experimental_rerun()
             
             # 5. Submission logic
-            has_valid_selection = (
+        has_valid_selection = (
                 st.session_state.form.get('selected_option') or
                 (st.session_state.form.get('is_custom_selected', False) and 
                  st.session_state.form.get('custom_topic', '').strip())
             )
             
-            if st.button("✅ إرسال الاختيار",
+        if st.button("✅ إرسال الاختيار",
                         type="primary",
                         disabled=not (has_valid_selection and st.session_state.form.get('first_name', '').strip()),
                         key="submit_button_" + str(st.session_state.last_refresh)):  # Unique key
-                if save_response():
+            if save_response():
                     st.session_state.form['submitted'] = True
                     st.rerun()
             
-            time.sleep(0.1)  # Prevent CPU overload
+        time.sleep(0.1)  # Prevent CPU overload
     
     # Show success message after submission
     if st.session_state.form.get('submitted', False):
