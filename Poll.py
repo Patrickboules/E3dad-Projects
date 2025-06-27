@@ -3,6 +3,7 @@ from streamlit.components.v1 import html
 import json
 from github import Github
 import re
+import time
 
 # Configure page - disable dark mode
 st.set_page_config(
@@ -701,7 +702,7 @@ def phone_verification_page():
                 st.session_state.form.update({
                     'phone_number': validated_phone,
                     'first_name': '',
-                    'last_name': '',
+                    'second_name': '',
                     'selected_option': None,
                     'custom_topic': '',
                     'is_custom_selected': False,
@@ -835,6 +836,9 @@ def main():
         phone_verification_page()
     else:
         main_form()
+
+    time.sleep(5)
+    st.rerun()
 
 if __name__ == "__main__":
     main()
