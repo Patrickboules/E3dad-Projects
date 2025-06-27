@@ -740,8 +740,21 @@ def get_combined_counts():
     return combined
 
 def main_form():
-    if not st.session_state.form['submitted']:
-        with st.container():
+    # Initialize refresh control
+    refresh_control = st.empty()
+    
+    # Track last refresh time
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = time.time()
+
+    # Streamlit-friendly conditional loop
+    while not st.session_state.form.get('submitted', False):
+        with refresh_control.container():
+            # 1. Load fresh data
+            existing_data = load_responses()
+            _, user_selections = process_responses(existing_data)
+            
+            # 2. Render form inputs
             st.subheader("المجموعة")
             col1, col2 = st.columns(2)
             with col1:
@@ -765,71 +778,46 @@ def main_form():
             
             create_custom_topic_input()
             st.markdown("---")
-    
-    if st.session_state.form['submitted']:
-        topic = (options[st.session_state.form['selected_option']] 
-                if st.session_state.form['selected_option'] 
-                else st.session_state.form['custom_topic'])
-        st.markdown(
-            f"""
-            <div class="success-message">
-                <h3>شكرًا لك {st.session_state.form['first_name']}!</h3>
-                <p>لقد اخترت: <strong>{topic}</strong></p>
-                <p>رقم الهاتف: <strong>{st.session_state.form['phone_number']}</strong></p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        return
-    
-    st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
-    
-    # Load user selections
-    existing_data = load_responses()
-    _, user_selections = process_responses(existing_data)
-    
-    for num, text in options.items():
-        create_option(num, text, user_selections)
-    
-    html(option_click_js(), height=0)
-    st.markdown("---")
-    
-    # Check for valid selection
-    has_valid_selection = (
-        st.session_state.form['selected_option'] is not None or
-        (st.session_state.form['is_custom_selected'] and 
-         st.session_state.form['custom_topic'].strip())
-    )
-    
-    if has_valid_selection:
-        if not st.session_state.form['first_name'].strip():
-            st.markdown(
-                '<div class="error-message">'
-                'الرجاء إدخال اسم المخدوم رقم 1'
-                '</div>',
-                unsafe_allow_html=True
+            
+            # 3. Topic selection
+            st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+            
+            for num, text in options.items():
+                create_option(num, text, user_selections)
+            
+            html(option_click_js(), height=0)
+            st.markdown("---")
+            
+            # 4. Auto-refresh logic
+            if time.time() - st.session_state.last_refresh > 5:  # Every 5 seconds
+                st.session_state.last_refresh = time.time()
+                st.cache_data.clear()
+                st.experimental_rerun()
+            
+            # 5. Submission logic
+            has_valid_selection = (
+                st.session_state.form['selected_option'] or
+                (st.session_state.form['is_custom_selected'] and 
+                 st.session_state.form['custom_topic'].strip())
             )
-        
-        if st.button("✅ إرسال الاختيار",
-                    type="primary",
-                    key="submit_btn",
-                    use_container_width=True,
-                    disabled=not st.session_state.form['first_name'].strip()):
-            if save_response():
-                st.session_state.form['submitted'] = True
-                st.rerun()
-    else:
-        st.markdown(
-            '<div class="error-message">'
-            'الرجاء اختيار موضوع واحد أو كتابة موضوع مخصص'
-            '</div>',
-            unsafe_allow_html=True
-        )
-        st.button("✅ إرسال الاختيار",
-                 type="primary",
-                 key="submit_btn",
-                 use_container_width=True,
-                 disabled=True)
+            
+            if st.button("✅ إرسال الاختيار",
+                        type="primary",
+                        disabled=not (has_valid_selection and st.session_state.form['first_name'].strip())):
+                if save_response():
+                    st.session_state.form['submitted'] = True
+                    st.rerun()
+            
+            time.sleep(0.1)  # Prevent CPU overload
+    
+    # Show success message after submission
+    if st.session_state.form['submitted']:
+        topic = options.get(st.session_state.form['selected_option'], st.session_state.form['custom_topic'])
+        st.success(f"""
+        شكرًا لك {st.session_state.form['first_name']}!
+        لقد اخترت: {topic}
+        رقم الهاتف: {st.session_state.form['phone_number']}
+        """)
 
 def main():
     if not st.session_state.form['phone_verified']:
