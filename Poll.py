@@ -340,7 +340,7 @@ def validate_egyptian_phone(phone):
     return None
 
 # Load existing responses from GitHub
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=1)
 def load_responses():
     try:
         g = Github(st.secrets["GITHUB_TOKEN"])
@@ -558,39 +558,178 @@ def option_click_js():
     """
 
 def phone_verification_page():
+    # Custom CSS for better styling
     st.markdown("""
-    <div class="phone-container">
-        <h2 style="text-align: center; margin-bottom: 30px;">الرجاء إدخال رقم الهاتف</h2>
-        <p style="text-align: center; margin-bottom: 20px;">
-            سيتم استخدام رقم الهاتف للتحقق من هويتك وتتبع اختياراتك
-        </p>
+    <style>
+        .phone-verification-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+        }
+        .phone-header {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .phone-instructions {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .stTextInput input {
+            text-align: right;
+            direction: rtl;
+            padding: 12px;
+            font-size: 16px;
+            width: 100%;
+        }
+        .phone-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .existing-data-card {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        .data-item {
+            margin-bottom: 8px;
+            display: flex;
+        }
+        .data-label {
+            font-weight: bold;
+            min-width: 120px;
+            color: #2c3e50;
+        }
+        .data-value {
+            flex-grow: 1;
+            color: #34495e;
+        }
+        /* Make button same width as text input */
+        .stButton>button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Main container
+    st.markdown("""
+    <div class="phone-verification-container">
+        <div class="phone-header">
+            <h2>التحقق من رقم الهاتف</h2>
+        </div>
+        <div class="phone-instructions">
+            <p>سيتم استخدام رقم الهاتف للتحقق من هويتك وتتبع اختياراتك</p>
+            <p>الرجاء إدخال رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
+    # Phone number input
     phone = st.text_input(
-        "رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)",
+        "",
         key="phone_input",
         placeholder="أدخل رقم هاتفك (مثال: 01234567890)",
-        max_chars=11
+        max_chars=11,
+        label_visibility="collapsed"
     )
     
-    if st.button("تأكيد رقم الهاتف", use_container_width=True):
+    # Verification button
+    if st.button("تأكيد رقم الهاتف", 
+                use_container_width=True,
+                type="primary"):
         validated_phone = validate_egyptian_phone(phone)
         if validated_phone:
-            st.session_state.form['phone_number'] = validated_phone
-            
-            # Load existing data and check if user has reached max selections
+            # Load existing data
             existing_data = load_responses()
-            _, user_selections = process_responses(existing_data)
-            user_topics = user_selections.get(validated_phone, [])
             
-            if len(user_topics) >= 3:
-                st.error("لقد قمت بالفعل باختيار 3 مواضيع كحد أقصى لكل رقم هاتف.")
+            # Check if phone exists in data
+            if validated_phone in existing_data:
+                user_data = existing_data[validated_phone]
+                st.session_state.form.update({
+                    'phone_number': validated_phone,
+                    'first_name': user_data.get('First Name', ''),
+                    'last_name': user_data.get('Last Name', ''),
+                    'selected_option': next((num for num, text in options.items() if text == user_data.get('Topic', '')), None),
+                    'custom_topic': '' if any(user_data.get('Topic', '') == text for text in options.values()) else user_data.get('Topic', ''),
+                    'is_custom_selected': not any(user_data.get('Topic', '') == text for text in options.values()),
+                    'phone_verified': True
+                })
+                
+                # Show existing data in a nice card
+                st.markdown("""
+                <div class="existing-data-card">
+                    <h4 style="margin-top: 0; color: #2c3e50;">البيانات المسجلة سابقاً</h4>
+                    <div class="data-item">
+                        <div class="data-label">الاسم الأول:</div>
+                        <div class="data-value">{}</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">الاسم الأخير:</div>
+                        <div class="data-value">{}</div>
+                    </div>
+                    <div class="data-item">
+                        <div class="data-label">الموضوع المختار:</div>
+                        <div class="data-value">{}</div>
+                    </div>
+                </div>
+                """.format(
+                    user_data.get('First Name', ''),
+                    user_data.get('Last Name', ''),
+                    user_data.get('Topic', '')
+                ), unsafe_allow_html=True)
+                
+                # Only show the "Continue with existing data" button
+                if st.button("المتابعة بالبيانات المسجلة", 
+                           use_container_width=True,
+                           type="primary"):
+                    st.session_state.form['phone_verified'] = True
+                    st.rerun()
+                
+                return
             else:
-                st.session_state.form['phone_verified'] = True
-                st.rerun()
+                # New phone number - only show "Start new registration"
+                st.session_state.form['phone_number'] = validated_phone
+                
+                # Check if user has reached max selections
+                _, user_selections = process_responses(existing_data)
+                user_topics = user_selections.get(validated_phone, [])
+                
+                if len(user_topics) >= 3:
+                    st.error("""
+                    <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
+                        لقد قمت بالفعل باختيار 3 مواضيع كحد أقصى لكل رقم هاتف.
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    if st.button("بدء تسجيل جديد", 
+                               use_container_width=True,
+                               type="primary"):
+                        st.session_state.form.update({
+                            'first_name': '',
+                            'last_name': '',
+                            'selected_option': None,
+                            'custom_topic': '',
+                            'is_custom_selected': False,
+                            'phone_verified': True
+                        })
+                        st.rerun()
         else:
-            st.error("الرجاء إدخال رقم هاتف مصري صحيح (يبدأ بـ 01 ويحتوي على 11 رقمًا)")
+            st.error("""
+            <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
+                الرجاء إدخال رقم هاتف مصري صحيح (يبدأ بـ 01 ويحتوي على 11 رقمًا)
+            </div>
+            """, unsafe_allow_html=True)
 
 def get_combined_counts():
     existing_data = load_responses()
