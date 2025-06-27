@@ -761,8 +761,8 @@ def main_form():
                 st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
                 st.session_state.form['first_name'] = st.text_input(
                     "اسم المخدوم رقم 1", 
-                    value=st.session_state.form['first_name'],
-                    key="first_name_input",
+                    value=st.session_state.form.get('first_name', ''),
+                    key="first_name_input_" + str(st.session_state.last_refresh),  # Unique key
                     label_visibility="collapsed",
                     placeholder="أدخل الاسم الأول"
                 )
@@ -770,8 +770,8 @@ def main_form():
                 st.markdown("اسم المخدوم رقم 2")
                 st.session_state.form['last_name'] = st.text_input(
                     "اسم المخدوم رقم 2", 
-                    value=st.session_state.form['last_name'],
-                    key="last_name_input",
+                    value=st.session_state.form.get('last_name', ''),
+                    key="last_name_input_" + str(st.session_state.last_refresh),  # Unique key
                     label_visibility="collapsed",
                     placeholder="أدخل الاسم الثاني"
                 )
@@ -796,14 +796,15 @@ def main_form():
             
             # 5. Submission logic
             has_valid_selection = (
-                st.session_state.form['selected_option'] or
-                (st.session_state.form['is_custom_selected'] and 
-                 st.session_state.form['custom_topic'].strip())
+                st.session_state.form.get('selected_option') or
+                (st.session_state.form.get('is_custom_selected', False) and 
+                 st.session_state.form.get('custom_topic', '').strip())
             )
             
             if st.button("✅ إرسال الاختيار",
                         type="primary",
-                        disabled=not (has_valid_selection and st.session_state.form['first_name'].strip())):
+                        disabled=not (has_valid_selection and st.session_state.form.get('first_name', '').strip()),
+                        key="submit_button_" + str(st.session_state.last_refresh)):  # Unique key
                 if save_response():
                     st.session_state.form['submitted'] = True
                     st.rerun()
@@ -811,12 +812,13 @@ def main_form():
             time.sleep(0.1)  # Prevent CPU overload
     
     # Show success message after submission
-    if st.session_state.form['submitted']:
-        topic = options.get(st.session_state.form['selected_option'], st.session_state.form['custom_topic'])
+    if st.session_state.form.get('submitted', False):
+        topic = options.get(st.session_state.form.get('selected_option', ''), 
+                          st.session_state.form.get('custom_topic', ''))
         st.success(f"""
-        شكرًا لك {st.session_state.form['first_name']}!
+        شكرًا لك {st.session_state.form.get('first_name', '')}!
         لقد اخترت: {topic}
-        رقم الهاتف: {st.session_state.form['phone_number']}
+        رقم الهاتف: {st.session_state.form.get('phone_number', '')}
         """)
 
 def main():
