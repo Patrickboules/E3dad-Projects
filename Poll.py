@@ -740,8 +740,16 @@ def get_combined_counts():
     return combined
 
 def main_form():
-    # Create a placeholder for refresh controls
-    refresh_controls = st.empty()
+    # Initialize session state variables if not already set
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = time.time()
+    
+    # Check if it's time to refresh data (every 30 seconds)
+    current_time = time.time()
+    if current_time - st.session_state.last_refresh > 5:
+        st.session_state.last_refresh = current_time
+        st.cache_data.clear()  # Clear cache to reload fresh data
+        st.rerun()  # Rerun the app to reflect changes
     
     # Load fresh data (using the cached function)
     existing_data = load_responses()  # @st.cache_data(ttl=1) ensures freshness
@@ -800,18 +808,6 @@ def main_form():
     html(option_click_js(), height=0)
     st.markdown("---")
     
-    # Add auto-refresh controls
-    with refresh_controls.container():
-        if st.button("🔄 تحديث البيانات الآن"):
-            st.cache_data.clear()
-            st.rerun()
-        
-        # Auto-refresh every 30 seconds
-        if st.session_state.get('last_refresh', 0) + 30 < time.time():
-            st.session_state.last_refresh = time.time()
-            st.cache_data.clear()
-            st.experimental_rerun()
-    
     # Handle form submission
     has_valid_selection = (
         st.session_state.form['selected_option'] is not None or
@@ -835,7 +831,7 @@ def main_form():
                     disabled=not st.session_state.form['first_name'].strip()):
             if save_response():
                 st.session_state.form['submitted'] = True
-                st.rerun()
+                st.rerun()  # Re-runs the app after submission
     else:
         st.markdown(
             '<div class="error-message">'
@@ -848,7 +844,7 @@ def main_form():
                  key="submit_btn",
                  use_container_width=True,
                  disabled=True)
-
+        
 def main():
     if not st.session_state.form['phone_verified']:
         phone_verification_page()
