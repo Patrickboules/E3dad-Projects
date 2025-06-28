@@ -702,7 +702,7 @@ def phone_verification_page():
                 st.session_state.form.update({
                     'phone_number': validated_phone,
                     'first_name': '',
-                    'second_name': '',
+                    'last_name': '',
                     'selected_option': None,
                     'custom_topic': '',
                     'is_custom_selected': False,
@@ -740,22 +740,7 @@ def get_combined_counts():
     return combined
 
 def main_form():
-    # Initialize session state variables if not already set
-    if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = time.time()
     
-    # Check if it's time to refresh data (every 30 seconds)
-    current_time = time.time()
-    if current_time - st.session_state.last_refresh > 5:
-        st.session_state.last_refresh = current_time
-        st.cache_data.clear()  # Clear cache to reload fresh data
-        st.rerun()  # Rerun the app to reflect changes
-    
-    # Load fresh data (using the cached function)
-    existing_data = load_responses()  # @st.cache_data(ttl=1) ensures freshness
-    _, user_selections = process_responses(existing_data)
-    
-    # Display form header and inputs
     if not st.session_state.form['submitted']:
         with st.container():
             st.subheader("المجموعة")
@@ -781,8 +766,15 @@ def main_form():
             
             create_custom_topic_input()
             st.markdown("---")
+            if 'last_refresh' not in st.session_state:
+                st.session_state.last_refresh = time.time()
+            current_time = time.time()
+            if current_time - st.session_state.last_refresh > 10:
+                st.session_state.last_refresh = current_time
+                st.cache_data.clear()
+                st.rerun()
+        
     
-    # Show success message if submitted
     if st.session_state.form['submitted']:
         topic = (options[st.session_state.form['selected_option']] 
                 if st.session_state.form['selected_option'] 
@@ -799,8 +791,11 @@ def main_form():
         )
         return
     
-    # Display topic selection options
     st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+    
+    # Load user selections
+    existing_data = load_responses()
+    _, user_selections = process_responses(existing_data)
     
     for num, text in options.items():
         create_option(num, text, user_selections)
@@ -808,7 +803,7 @@ def main_form():
     html(option_click_js(), height=0)
     st.markdown("---")
     
-    # Handle form submission
+    # Check for valid selection
     has_valid_selection = (
         st.session_state.form['selected_option'] is not None or
         (st.session_state.form['is_custom_selected'] and 
@@ -831,7 +826,7 @@ def main_form():
                     disabled=not st.session_state.form['first_name'].strip()):
             if save_response():
                 st.session_state.form['submitted'] = True
-                st.rerun()  # Re-runs the app after submission
+                st.rerun()
     else:
         st.markdown(
             '<div class="error-message">'
@@ -844,15 +839,12 @@ def main_form():
                  key="submit_btn",
                  use_container_width=True,
                  disabled=True)
-        
+
 def main():
     if not st.session_state.form['phone_verified']:
         phone_verification_page()
     else:
         main_form()
-
-    time.sleep(5)
-    st.rerun()
 
 if __name__ == "__main__":
     main()
