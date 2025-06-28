@@ -740,86 +740,114 @@ def get_combined_counts():
     return combined
 
 def main_form():
-    # Initialize refresh control
-    refresh_control = st.empty()
+    # Create a placeholder for refresh controls
+    refresh_controls = st.empty()
     
-    # Track last refresh time
-    if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = time.time()
-
-    # Streamlit-friendly conditional loop
-    while not st.session_state.form.get('submitted', False):
-        with refresh_control.container():
-            # 1. Load fresh data
-            existing_data = load_responses()
-            _, user_selections = process_responses(existing_data)
-            
-            # 2. Render form inputs
-    st.subheader("المجموعة")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
-        st.session_state.form['first_name'] = st.text_input(
+    # Load fresh data (using the cached function)
+    existing_data = load_responses()  # @st.cache_data(ttl=1) ensures freshness
+    _, user_selections = process_responses(existing_data)
+    
+    # Display form header and inputs
+    if not st.session_state.form['submitted']:
+        with st.container():
+            st.subheader("المجموعة")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
+                st.session_state.form['first_name'] = st.text_input(
                     "اسم المخدوم رقم 1", 
-                    value=st.session_state.form.get('first_name', ''),
-                    key="first_name_input_" + str(st.session_state.last_refresh),  # Unique key
+                    value=st.session_state.form['first_name'],
+                    key="first_name_input",
                     label_visibility="collapsed",
                     placeholder="أدخل الاسم الأول"
                 )
-    with col2:
-        st.markdown("اسم المخدوم رقم 2")
-        st.session_state.form['last_name'] = st.text_input(
-                                "اسم المخدوم رقم 2", 
-                    value=st.session_state.form.get('last_name', ''),
-                    key="last_name_input_" + str(st.session_state.last_refresh),  # Unique key
+            with col2:
+                st.markdown("اسم المخدوم رقم 2")
+                st.session_state.form['last_name'] = st.text_input(
+                    "اسم المخدوم رقم 2", 
+                    value=st.session_state.form['last_name'],
+                    key="last_name_input",
                     label_visibility="collapsed",
                     placeholder="أدخل الاسم الثاني"
                 )
             
-        create_custom_topic_input()
-        st.markdown("---")
-            
-        # 3. Topic selection
-        st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+            create_custom_topic_input()
+            st.markdown("---")
+    
+    # Show success message if submitted
+    if st.session_state.form['submitted']:
+        topic = (options[st.session_state.form['selected_option']] 
+                if st.session_state.form['selected_option'] 
+                else st.session_state.form['custom_topic'])
+        st.markdown(
+            f"""
+            <div class="success-message">
+                <h3>شكرًا لك {st.session_state.form['first_name']}!</h3>
+                <p>لقد اخترت: <strong>{topic}</strong></p>
+                <p>رقم الهاتف: <strong>{st.session_state.form['phone_number']}</strong></p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        return
+    
+    # Display topic selection options
+    st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+    
+    for num, text in options.items():
+        create_option(num, text, user_selections)
+    
+    html(option_click_js(), height=0)
+    st.markdown("---")
+    
+    # Add auto-refresh controls
+    with refresh_controls.container():
+        if st.button("🔄 تحديث البيانات الآن"):
+            st.cache_data.clear()
+            st.rerun()
         
-        for num, text in options.items():
-            create_option(num, text, user_selections)
-            
-        html(option_click_js(), height=0)
-        st.markdown("---")
-            
-            # 4. Auto-refresh logic
-        if time.time() - st.session_state.last_refresh > 5:  # Every 5 seconds
+        # Auto-refresh every 30 seconds
+        if st.session_state.get('last_refresh', 0) + 30 < time.time():
             st.session_state.last_refresh = time.time()
             st.cache_data.clear()
             st.experimental_rerun()
-            
-            # 5. Submission logic
-        has_valid_selection = (
-                st.session_state.form.get('selected_option') or
-                (st.session_state.form.get('is_custom_selected', False) and 
-                 st.session_state.form.get('custom_topic', '').strip())
-            )
-            
-        if st.button("✅ إرسال الاختيار",
-                        type="primary",
-                        disabled=not (has_valid_selection and st.session_state.form.get('first_name', '').strip()),
-                        key="submit_button_" + str(st.session_state.last_refresh)):  # Unique key
-            if save_response():
-                    st.session_state.form['submitted'] = True
-                    st.rerun()
-            
-        time.sleep(0.1)  # Prevent CPU overload
     
-    # Show success message after submission
-    if st.session_state.form.get('submitted', False):
-        topic = options.get(st.session_state.form.get('selected_option', ''), 
-                          st.session_state.form.get('custom_topic', ''))
-        st.success(f"""
-        شكرًا لك {st.session_state.form.get('first_name', '')}!
-        لقد اخترت: {topic}
-        رقم الهاتف: {st.session_state.form.get('phone_number', '')}
-        """)
+    # Handle form submission
+    has_valid_selection = (
+        st.session_state.form['selected_option'] is not None or
+        (st.session_state.form['is_custom_selected'] and 
+         st.session_state.form['custom_topic'].strip())
+    )
+    
+    if has_valid_selection:
+        if not st.session_state.form['first_name'].strip():
+            st.markdown(
+                '<div class="error-message">'
+                'الرجاء إدخال اسم المخدوم رقم 1'
+                '</div>',
+                unsafe_allow_html=True
+            )
+        
+        if st.button("✅ إرسال الاختيار",
+                    type="primary",
+                    key="submit_btn",
+                    use_container_width=True,
+                    disabled=not st.session_state.form['first_name'].strip()):
+            if save_response():
+                st.session_state.form['submitted'] = True
+                st.rerun()
+    else:
+        st.markdown(
+            '<div class="error-message">'
+            'الرجاء اختيار موضوع واحد أو كتابة موضوع مخصص'
+            '</div>',
+            unsafe_allow_html=True
+        )
+        st.button("✅ إرسال الاختيار",
+                 type="primary",
+                 key="submit_btn",
+                 use_container_width=True,
+                 disabled=True)
 
 def main():
     if not st.session_state.form['phone_verified']:
