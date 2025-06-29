@@ -775,13 +775,6 @@ def main_form():
             
             create_custom_topic_input()
             st.markdown("---")
-            if 'last_refresh' not in st.session_state:
-                st.session_state.last_refresh = time.time()
-            current_time = time.time()
-            if current_time - st.session_state.last_refresh > 10:
-                st.session_state.last_refresh = current_time
-                st.cache_data.clear()
-                st.rerun()
 
                 
             st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
@@ -849,6 +842,17 @@ def main_form():
             """,
             unsafe_allow_html=True
         )
+
+            # Initialize last_refresh if not exists
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = time.time()
+    
+    # Check if automatic refresh is needed
+    current_time = time.time()
+    if current_time - st.session_state.last_refresh > 10:  # 10 seconds
+        st.session_state.last_refresh = current_time
+        st.cache_data.clear()
+        st.rerun()
     
 
 def main():
