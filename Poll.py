@@ -841,6 +841,7 @@ def main_form():
 
 def show_confirmation_page():
     st.empty()
+    st.balloons()
     # Get the selected topic
     topic = (options[st.session_state.form['selected_option']] 
             if st.session_state.form['selected_option'] 
