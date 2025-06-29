@@ -741,6 +741,14 @@ def get_combined_counts():
 
 def main_form():
     
+    if 'last_refresh' not in st.session_state:
+        st.session_state.last_refresh = time.time()
+    current_time = time.time()
+    if current_time - st.session_state.last_refresh > 10:
+        st.session_state.last_refresh = current_time
+        st.cache_data.clear()
+        st.rerun()
+
     if not st.session_state.form['submitted']:
         with st.container():
             st.subheader("المجموعة")
@@ -773,7 +781,58 @@ def main_form():
                 st.session_state.last_refresh = current_time
                 st.cache_data.clear()
                 st.rerun()
-        
+
+                
+            st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+            
+            # Load user selections
+            existing_data = load_responses()
+            _, user_selections = process_responses(existing_data)
+            
+            for num, text in options.items():
+                create_option(num, text, user_selections)
+            
+            html(option_click_js(), height=0)
+            st.markdown("---")
+            
+            # Check for valid selection
+            has_valid_selection = (
+                st.session_state.form['selected_option'] is not None or
+                (st.session_state.form['is_custom_selected'] and 
+                st.session_state.form['custom_topic'].strip())
+            )
+            
+            if has_valid_selection:
+                if not st.session_state.form['first_name'].strip():
+                    st.markdown(
+                        '<div class="error-message">'
+                        'الرجاء إدخال اسم المخدوم رقم 1'
+                        '</div>',
+                        unsafe_allow_html=True
+                    )
+                
+                if st.button("✅ إرسال الاختيار",
+                            type="primary",
+                            key="submit_btn",
+                            use_container_width=True,
+                            disabled=not st.session_state.form['first_name'].strip()):
+                    if save_response():
+                        st.session_state.form['submitted'] = True
+                        st.rerun()
+            else:
+                st.markdown(
+                    '<div class="error-message">'
+                    'الرجاء اختيار موضوع واحد أو كتابة موضوع مخصص'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+                st.button("✅ إرسال الاختيار",
+                        type="primary",
+                        key="submit_btn",
+                        use_container_width=True,
+                        disabled=True)
+                
+            st.markdown("---")        
     
     if st.session_state.form['submitted']:
         topic = (options[st.session_state.form['selected_option']] 
@@ -789,56 +848,7 @@ def main_form():
             """,
             unsafe_allow_html=True
         )
-        return
     
-    st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
-    
-    # Load user selections
-    existing_data = load_responses()
-    _, user_selections = process_responses(existing_data)
-    
-    for num, text in options.items():
-        create_option(num, text, user_selections)
-    
-    html(option_click_js(), height=0)
-    st.markdown("---")
-    
-    # Check for valid selection
-    has_valid_selection = (
-        st.session_state.form['selected_option'] is not None or
-        (st.session_state.form['is_custom_selected'] and 
-         st.session_state.form['custom_topic'].strip())
-    )
-    
-    if has_valid_selection:
-        if not st.session_state.form['first_name'].strip():
-            st.markdown(
-                '<div class="error-message">'
-                'الرجاء إدخال اسم المخدوم رقم 1'
-                '</div>',
-                unsafe_allow_html=True
-            )
-        
-        if st.button("✅ إرسال الاختيار",
-                    type="primary",
-                    key="submit_btn",
-                    use_container_width=True,
-                    disabled=not st.session_state.form['first_name'].strip()):
-            if save_response():
-                st.session_state.form['submitted'] = True
-                st.rerun()
-    else:
-        st.markdown(
-            '<div class="error-message">'
-            'الرجاء اختيار موضوع واحد أو كتابة موضوع مخصص'
-            '</div>',
-            unsafe_allow_html=True
-        )
-        st.button("✅ إرسال الاختيار",
-                 type="primary",
-                 key="submit_btn",
-                 use_container_width=True,
-                 disabled=True)
 
 def main():
     if not st.session_state.form['phone_verified']:
