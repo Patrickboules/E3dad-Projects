@@ -741,15 +741,16 @@ def get_combined_counts():
 
 def main_form():
     
-    if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = time.time()
-    current_time = time.time()
-    if current_time - st.session_state.last_refresh > 10:
-        st.session_state.last_refresh = current_time
-        st.cache_data.clear()
-        st.rerun()
 
     if not st.session_state.form['submitted']:
+        if 'last_refresh' not in st.session_state:
+            st.session_state.last_refresh = time.time()
+        current_time = time.time()
+        if current_time - st.session_state.last_refresh > 10:
+            st.session_state.last_refresh = current_time
+            st.cache_data.clear()
+            st.rerun()
+
         with st.container():
             st.subheader("المجموعة")
             col1, col2 = st.columns(2)
