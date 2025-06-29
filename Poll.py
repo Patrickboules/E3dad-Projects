@@ -559,175 +559,177 @@ def option_click_js():
     """
 
 def phone_verification_page():
-    # Custom CSS for better styling
-    st.markdown("""
-    <style>
-        .phone-verification-container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            background-color: #ffffff;
-        }
-        .phone-header {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 25px;
-        }
-        .phone-instructions {
-            text-align: center;
-            color: #7f8c8d;
-            margin-bottom: 30px;
-            font-size: 16px;
-            line-height: 1.5;
-        }
-        .stTextInput input {
-            text-align: right;
-            direction: rtl;
-            padding: 12px;
-            font-size: 16px;
-            width: 100%;
-        }
-        .phone-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        .existing-data-card {
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-            border-left: 4px solid #3498db;
-        }
-        .data-item {
-            margin-bottom: 8px;
-            display: flex;
-        }
-        .data-label {
-            font-weight: bold;
-            min-width: 120px;
-            color: #2c3e50;
-        }
-        .data-value {
-            flex-grow: 1;
-            color: #34495e;
-        }
-        /* Make button same width as text input */
-        .stButton>button {
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    with st.container():
+        # Custom CSS for better styling
+        st.markdown("""
+        <style>
+            .phone-verification-container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                background-color: #ffffff;
+            }
+            .phone-header {
+                text-align: center;
+                color: #2c3e50;
+                margin-bottom: 25px;
+            }
+            .phone-instructions {
+                text-align: center;
+                color: #7f8c8d;
+                margin-bottom: 30px;
+                font-size: 16px;
+                line-height: 1.5;
+            }
+            .stTextInput input {
+                text-align: right;
+                direction: rtl;
+                padding: 12px;
+                font-size: 16px;
+                width: 100%;
+            }
+            .phone-actions {
+                display: flex;
+                gap: 10px;
+                margin-top: 20px;
+            }
+            .existing-data-card {
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                padding: 15px;
+                margin: 20px 0;
+                border-left: 4px solid #3498db;
+            }
+            .data-item {
+                margin-bottom: 8px;
+                display: flex;
+            }
+            .data-label {
+                font-weight: bold;
+                min-width: 120px;
+                color: #2c3e50;
+            }
+            .data-value {
+                flex-grow: 1;
+                color: #34495e;
+            }
+            /* Make button same width as text input */
+            .stButton>button {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
-    # Main container
-    st.markdown("""
-    <div class="phone-verification-container">
-        <div class="phone-header">
-            <h2>التحقق من رقم الهاتف</h2>
-        </div>
-        <div class="phone-instructions">
-            <p>سيتم استخدام رقم الهاتف للتحقق من هويتك وتتبع اختياراتك</p>
-            <p>الرجاء إدخال رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Phone number input
-    phone = st.text_input(
-        "",
-        key="phone_input",
-        placeholder="أدخل رقم هاتفك (مثال: 01234567890)",
-        max_chars=11,
-        label_visibility="collapsed"
-    )
-    
-    # Verification button
-    if st.button("تأكيد رقم الهاتف", 
-                use_container_width=True,
-                type="primary"):
-        validated_phone = validate_egyptian_phone(phone)
-        if validated_phone:
-            # Load existing data
-            existing_data = load_responses()
-            
-            # Check if phone exists in data
-            if validated_phone in existing_data:
-                user_data = existing_data[validated_phone]
-                st.session_state.form.update({
-                    'phone_number': validated_phone,
-                    'first_name': user_data.get('First Name', ''),
-                    'last_name': user_data.get('Last Name', ''),
-                    'selected_option': next((num for num, text in options.items() if text == user_data.get('Topic', '')), None),
-                    'custom_topic': '' if any(user_data.get('Topic', '') == text for text in options.values()) else user_data.get('Topic', ''),
-                    'is_custom_selected': not any(user_data.get('Topic', '') == text for text in options.values()),
-                    'phone_verified': True
-                })
-                
-                # Show existing data in a nice card
-                st.markdown("""
-                <div class="existing-data-card">
-                    <h4 style="margin-top: 0; color: #2c3e50;">البيانات المسجلة سابقاً</h4>
-                    <div class="data-item">
-                        <div class="data-label">الاسم الأول:</div>
-                        <div class="data-value">{}</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">الاسم الأخير:</div>
-                        <div class="data-value">{}</div>
-                    </div>
-                    <div class="data-item">
-                        <div class="data-label">الموضوع المختار:</div>
-                        <div class="data-value">{}</div>
-                    </div>
-                </div>
-                """.format(
-                    user_data.get('First Name', ''),
-                    user_data.get('Last Name', ''),
-                    user_data.get('Topic', '')
-                ), unsafe_allow_html=True)
-                
-                # Only show the "Continue with existing data" button
-                if st.button("المتابعة بالبيانات المسجلة", 
-                           use_container_width=True,
-                           type="primary"):
-                    st.session_state.form['phone_verified'] = True
-                    st.rerun()
-                
-            else:
-                # New phone number - automatically redirect
-                st.session_state.form.update({
-                    'phone_number': validated_phone,
-                    'first_name': '',
-                    'last_name': '',
-                    'selected_option': None,
-                    'custom_topic': '',
-                    'is_custom_selected': False,
-                    'phone_verified': True
-                })
-                
-                # Check if user has reached max selections
-                _, user_selections = process_responses(existing_data)
-                user_topics = user_selections.get(validated_phone, [])
-                
-                if len(user_topics) >= 3:
-                    st.error("""
-                    <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
-                        لقد قمت بالفعل باختيار 3 مواضيع كحد أقصى لكل رقم هاتف.
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    st.rerun()  # Automatically redirect to choices page
-                    
-        else:
-            st.error("""
-            <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
-                الرجاء إدخال رقم هاتف مصري صحيح (يبدأ بـ 01 ويحتوي على 11 رقمًا)
+        # Main container
+        st.markdown("""
+        <div class="phone-verification-container">
+            <div class="phone-header">
+                <h2>التحقق من رقم الهاتف</h2>
             </div>
-            """, unsafe_allow_html=True)
+            <div class="phone-instructions">
+                <p>سيتم استخدام رقم الهاتف للتحقق من هويتك وتتبع اختياراتك</p>
+                <p>الرجاء إدخال رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)</p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Phone number input
+        phone = st.text_input(
+            "",
+            key="phone_input",
+            placeholder="أدخل رقم هاتفك (مثال: 01234567890)",
+            max_chars=11,
+            label_visibility="collapsed"
+        )
+        
+        # Verification button
+        if st.button("تأكيد رقم الهاتف", 
+                    use_container_width=True,
+                    type="primary"):
+            validated_phone = validate_egyptian_phone(phone)
+            if validated_phone:
+                # Load existing data
+                existing_data = load_responses()
+                
+                # Check if phone exists in data
+                if validated_phone in existing_data:
+                    user_data = existing_data[validated_phone]
+                    st.session_state.form.update({
+                        'phone_number': validated_phone,
+                        'first_name': user_data.get('First Name', ''),
+                        'last_name': user_data.get('Last Name', ''),
+                        'selected_option': next((num for num, text in options.items() if text == user_data.get('Topic', '')), None),
+                        'custom_topic': '' if any(user_data.get('Topic', '') == text for text in options.values()) else user_data.get('Topic', ''),
+                        'is_custom_selected': not any(user_data.get('Topic', '') == text for text in options.values()),
+                        'phone_verified': True
+                    })
+                    
+                    # Show existing data in a nice card
+                    st.markdown("""
+                    <div class="existing-data-card">
+                        <h4 style="margin-top: 0; color: #2c3e50;">البيانات المسجلة سابقاً</h4>
+                        <div class="data-item">
+                            <div class="data-label">الاسم الأول:</div>
+                            <div class="data-value">{}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">الاسم الأخير:</div>
+                            <div class="data-value">{}</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-label">الموضوع المختار:</div>
+                            <div class="data-value">{}</div>
+                        </div>
+                    </div>
+                    """.format(
+                        user_data.get('First Name', ''),
+                        user_data.get('Last Name', ''),
+                        user_data.get('Topic', '')
+                    ), unsafe_allow_html=True)
+                    
+                    # Only show the "Continue with existing data" button
+                    if st.button("المتابعة بالبيانات المسجلة", 
+                            use_container_width=True,
+                            type="primary"):
+                        st.session_state.form['phone_verified'] = True
+                        st.markdown.clear()
+                        st.rerun()
+                    
+                else:
+                    # New phone number - automatically redirect
+                    st.session_state.form.update({
+                        'phone_number': validated_phone,
+                        'first_name': '',
+                        'second_name': '',
+                        'selected_option': None,
+                        'custom_topic': '',
+                        'is_custom_selected': False,
+                        'phone_verified': True
+                    })
+                    
+                    # Check if user has reached max selections
+                    _, user_selections = process_responses(existing_data)
+                    user_topics = user_selections.get(validated_phone, [])
+                    
+                    if len(user_topics) >= 3:
+                        st.error("""
+                        <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
+                            لقد قمت بالفعل باختيار 3 مواضيع كحد أقصى لكل رقم هاتف.
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.rerun()  # Automatically redirect to choices page
+                        
+            else:
+                st.error("""
+                <div style='text-align: center; padding: 15px; border-radius: 8px; background-color: #fdecea;'>
+                    الرجاء إدخال رقم هاتف مصري صحيح (يبدأ بـ 01 ويحتوي على 11 رقمًا)
+                </div>
+                """, unsafe_allow_html=True)
 
 def get_combined_counts():
     existing_data = load_responses()
@@ -740,126 +742,138 @@ def get_combined_counts():
     return combined
 
 def main_form():
-    
-
-    if not st.session_state.form['submitted']:
+    if st.session_state.form['submitted'] == True:
+            show_confirmation_page()
+            return
+    else:
         if 'last_refresh' not in st.session_state:
             st.session_state.last_refresh = time.time()
+        
+        # Check if it's time to refresh data (every 30 seconds)
         current_time = time.time()
         if current_time - st.session_state.last_refresh > 10:
             st.session_state.last_refresh = current_time
-            st.cache_data.clear()
             st.rerun()
-
         with st.container():
             st.subheader("المجموعة")
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
                 st.session_state.form['first_name'] = st.text_input(
-                    "اسم المخدوم رقم 1", 
-                    value=st.session_state.form['first_name'],
-                    key="first_name_input",
-                    label_visibility="collapsed",
-                    placeholder="أدخل الاسم الأول"
-                )
+                            "اسم المخدوم رقم 1", 
+                            value=st.session_state.form['first_name'],
+                            key="first_name_input",
+                            label_visibility="collapsed",
+                            placeholder="أدخل الاسم الأول"
+                        )
             with col2:
                 st.markdown("اسم المخدوم رقم 2")
                 st.session_state.form['last_name'] = st.text_input(
-                    "اسم المخدوم رقم 2", 
-                    value=st.session_state.form['last_name'],
-                    key="last_name_input",
-                    label_visibility="collapsed",
-                    placeholder="أدخل الاسم الثاني"
-                )
-            
+                        "اسم المخدوم رقم 2", 
+                            value=st.session_state.form['last_name'],
+                            key="last_name_input",
+                            label_visibility="collapsed",
+                            placeholder="أدخل الاسم الثاني"
+                        )
             create_custom_topic_input()
             st.markdown("---")
-
-                
-            st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
             
-            # Load user selections
-            existing_data = load_responses()
+            existing_data = load_responses()  # @st.cache_data(ttl=1) ensures freshness
             _, user_selections = process_responses(existing_data)
-            
+                    
+                    # Display topic selection options
+            st.markdown('<h2 class="header">الرجاء اختيار موضوع واحد من المواضيع التالية:</h2>', unsafe_allow_html=True)
+                    
             for num, text in options.items():
                 create_option(num, text, user_selections)
-            
+                    
             html(option_click_js(), height=0)
             st.markdown("---")
-            
-            # Check for valid selection
+                    
+                    # Handle form submission
+                    # Check if a valid selection exists
             has_valid_selection = (
-                st.session_state.form['selected_option'] is not None or
-                (st.session_state.form['is_custom_selected'] and 
-                st.session_state.form['custom_topic'].strip())
-            )
-            
-            if has_valid_selection:
-                if not st.session_state.form['first_name'].strip():
-                    st.markdown(
-                        '<div class="error-message">'
-                        'الرجاء إدخال اسم المخدوم رقم 1'
-                        '</div>',
-                        unsafe_allow_html=True
+                        st.session_state.form['selected_option'] is not None or
+                        (st.session_state.form['is_custom_selected'] and 
+                        st.session_state.form.get('custom_topic', '').strip())
                     )
-                
-                if st.button("✅ إرسال الاختيار",
-                            type="primary",
-                            key="submit_btn",
-                            use_container_width=True,
-                            disabled=not st.session_state.form['first_name'].strip()):
-                    if save_response():
-                        st.session_state.form['submitted'] = True
-                        st.rerun()
-            else:
-                st.markdown(
-                    '<div class="error-message">'
-                    'الرجاء اختيار موضوع واحد أو كتابة موضوع مخصص'
-                    '</div>',
-                    unsafe_allow_html=True
-                )
+
+                    # Check if first_name is empty
+                    # 
+            is_first_name_empty = not st.session_state.form.get('first_name', '').strip()
+
+                    # Determine if the submit button should be disabled
+            submit_disabled = not has_valid_selection or is_first_name_empty
+
+                    # Display error messages
+            if not has_valid_selection:
+                    st.markdown(
+                            '<div class="error-message">'
+                            'الرجاء اختيار موضوع واحد أو كتابة موضوع مخصص'
+                            '</div>',
+                            unsafe_allow_html=True
+                        )
+
+            if is_first_name_empty and has_valid_selection:
+                    st.markdown(
+                            '<div class="error-message">'
+                            'الرجاء إدخال اسم المخدوم رقم 1'
+                            '</div>',
+                            unsafe_allow_html=True
+                        )
+
+                    # Submit button
+            if submit_disabled:
                 st.button("✅ إرسال الاختيار",
-                        type="primary",
-                        key="submit_btn",
-                        use_container_width=True,
-                        disabled=True)
-                
-            st.markdown("---")        
-    
-    if st.session_state.form['submitted']:
-        topic = (options[st.session_state.form['selected_option']] 
-                if st.session_state.form['selected_option'] 
-                else st.session_state.form['custom_topic'])
-        st.markdown(
+                                type="primary",
+                                key="submit_btn",
+                                use_container_width=True,
+                                disabled=True)
+            else:
+                if st.button("✅ إرسال الاختيار",
+                                    type="primary",
+                                    key="submit_btn",
+                                    use_container_width=True):
+                    if save_response():
+                            st.session_state.form['submitted'] = True
+                            st.rerun()
+
+
+def show_confirmation_page():
+    st.empty()
+    # Get the selected topic
+    topic = (options[st.session_state.form['selected_option']] 
+            if st.session_state.form['selected_option'] 
+            else st.session_state.form['custom_topic'])
+
+    st.markdown(
             f"""
-            <div class="success-message">
-                <h3>شكرًا لك {st.session_state.form['first_name']}!</h3>
-                <p>لقد اخترت: <strong>{topic}</strong></p>
-                <p>رقم الهاتف: <strong>{st.session_state.form['phone_number']}</strong></p>
+            <div style="
+                padding: 1.5rem;
+                background: white;
+                border-radius: 10px;
+                margin: 1rem 0;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            ">
+                <h3 style='color: #1976d2; text-align: center;'>تفاصيل التسجيل</h3>
+                <div style="text-align: right;">
+                    <p><strong>الاسم:</strong> {st.session_state.form['first_name']}</p>
+                    <p><strong>الموضوع المختار:</strong> {topic}</p>
+                    <p><strong>رقم الهاتف:</strong> {st.session_state.form['phone_number']}</p>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
-
-            # Initialize last_refresh if not exists
-    if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = time.time()
-    
-    # Check if automatic refresh is needed
-    current_time = time.time()
-    if current_time - st.session_state.last_refresh > 10:  # 10 seconds
-        st.session_state.last_refresh = current_time
-        st.cache_data.clear()
-        st.rerun()
-    
 
 def main():
     if not st.session_state.form['phone_verified']:
         phone_verification_page()
     else:
         main_form()
+
+    time.sleep(10)
+    st.rerun()
 
 if __name__ == "__main__":
     main()
