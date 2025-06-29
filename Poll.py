@@ -488,7 +488,7 @@ def create_option(num, text, user_selections):
              onclick="handleClick({num})">
             <div class="option-header">
                 <div class="option-number">{num}.</div>
-                <div class="count-display">({count}/{max_limit}) - اختياراتك: {user_topic_count}/3</div>
+                <div class="count-display">({count}/{max_limit}) - اختياراتك:</div>
             </div>
             <div class="option-text">{text}</div>
             <div class="progress-container">
