@@ -467,6 +467,15 @@ def handle_custom_topic():
     save_response()
     st.rerun()
 
+def handle_option_deselection():
+    """Handle deselection of the currently selected option"""
+    if st.session_state.form['selected_option'] is not None:
+        prev_option = st.session_state.form['selected_option']
+        st.session_state.form['temp_counts'][prev_option] = st.session_state.form['temp_counts'].get(prev_option, 0) - 1
+        st.session_state.form['selected_option'] = None
+        save_response()
+        st.rerun()
+
 def create_option(num, text, user_selections):
     combined_counts = get_combined_counts()
     count = combined_counts.get(num, 0)
@@ -502,8 +511,12 @@ def create_option(num, text, user_selections):
         unsafe_allow_html=True
     )
     
-    if not disabled and container.button("اختر", key=f"select_{num}"):
-        handle_option_selection(num)
+    if selected:
+        if container.button("إلغاء الاختيار", key=f"deselect_{num}"):
+            handle_option_deselection()
+    elif not disabled:
+        if container.button("اختر", key=f"select_{num}"):
+            handle_option_selection(num)
 
 def create_custom_topic_input():
     selected = (st.session_state.form['is_custom_selected'] and 
@@ -630,10 +643,9 @@ def phone_verification_page():
         st.markdown("""
         <div class="phone-verification-container">
             <div class="phone-header">
-                <h2>التحقق من رقم الهاتف</h2>
+                <h2>التحقق من رقم هاتفك انه متسجل لدينا</h2>
             </div>
             <div class="phone-instructions">
-                <p>سيتم استخدام رقم الهاتف لتتبع اختياراتك</p>
                 <p>الرجاء إدخال رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)</p>
             </div>
         </div>
@@ -643,7 +655,6 @@ def phone_verification_page():
         phone = st.text_input(
             "",
             key="phone_input",
-            placeholder="أدخل رقم هاتفك (مثال: 01234567890)",
             max_chars=11,
             label_visibility="collapsed"
         )
