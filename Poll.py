@@ -438,6 +438,7 @@ def handle_option_selection(option_num):
     """Handle selection of a predefined option"""
     # Clear any custom selection
     st.session_state.form['custom_topic'] = ''
+    st.session_state.custom_topic_input = ''
     st.session_state.form['is_custom_selected'] = False
     
     # Update counts for previous selection if exists
@@ -448,6 +449,7 @@ def handle_option_selection(option_num):
     # Set new selection
     st.session_state.form['selected_option'] = option_num
     st.session_state.form['temp_counts'][option_num] = st.session_state.form['temp_counts'].get(option_num, 0) + 1
+    save_response()
     st.rerun()
 
 def handle_custom_topic():
@@ -462,6 +464,7 @@ def handle_custom_topic():
     custom_text = st.session_state.custom_topic_input.strip()
     st.session_state.form['custom_topic'] = custom_text
     st.session_state.form['is_custom_selected'] = bool(custom_text)
+    save_response()
     st.rerun()
 
 def create_option(num, text, user_selections):
@@ -511,7 +514,7 @@ def create_custom_topic_input():
         container_class += " custom-topic-selected"
     
     st.markdown(f'<div class="{container_class}">', unsafe_allow_html=True)
-    st.markdown("**أو اكتب موضوعًا مخصصًا:**")
+    st.markdown("<h2 class='header'>أو اكتب موضوعًا مخصصًا: </h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([4, 1])
     with col1:
@@ -521,7 +524,6 @@ def create_custom_topic_input():
             key="custom_topic_input",
             label_visibility="collapsed",
             placeholder="اكتب موضوعًا مخصصًا إذا لم تجد ما تبحث عنه",
-            on_change=handle_custom_topic
         )
     with col2:
         if st.button("اختر", key="select_custom", use_container_width=True):
@@ -631,7 +633,7 @@ def phone_verification_page():
                 <h2>التحقق من رقم الهاتف</h2>
             </div>
             <div class="phone-instructions">
-                <p>سيتم استخدام رقم الهاتف للتحقق من هويتك وتتبع اختياراتك</p>
+                <p>سيتم استخدام رقم الهاتف لتتبع اختياراتك</p>
                 <p>الرجاء إدخال رقم الهاتف المصري (يبدأ بـ 01 ويحتوي على 11 رقمًا)</p>
             </div>
         </div>
@@ -647,7 +649,7 @@ def phone_verification_page():
         )
         
         # Verification button
-        if st.button("تأكيد رقم الهاتف", 
+        if st.button("Enter", 
                     use_container_width=True,
                     type="primary"):
             validated_phone = validate_egyptian_phone(phone)
@@ -775,7 +777,7 @@ def main_form():
                             label_visibility="collapsed",
                             placeholder="أدخل الاسم الثاني"
                         )
-            create_custom_topic_input()
+            
             st.markdown("---")
             
             existing_data = load_responses()  # @st.cache_data(ttl=1) ensures freshness
@@ -789,6 +791,8 @@ def main_form():
                     
             html(option_click_js(), height=0)
             st.markdown("---")
+
+            create_custom_topic_input()
                     
                     # Handle form submission
                     # Check if a valid selection exists
