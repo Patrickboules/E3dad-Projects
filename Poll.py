@@ -434,23 +434,7 @@ def save_response():
         st.error(f"حدث خطأ في حفظ البيانات على GitHub: {str(e)}")
         return False
 
-def handle_option_selection(option_num):
-    """Handle selection of a predefined option"""
-    # Clear any custom selection
-    st.session_state.form['custom_topic'] = ''
-    st.session_state.custom_topic_input = ''
-    st.session_state.form['is_custom_selected'] = False
-    
-    # Update counts for previous selection if exists
-    if st.session_state.form['selected_option'] is not None:
-        prev_option = st.session_state.form['selected_option']
-        st.session_state.form['temp_counts'][prev_option] = st.session_state.form['temp_counts'].get(prev_option, 0) - 1
-    
-    # Set new selection
-    st.session_state.form['selected_option'] = option_num
-    st.session_state.form['temp_counts'][option_num] = st.session_state.form['temp_counts'].get(option_num, 0) + 1
-    save_response()
-    st.rerun()
+
 
 def handle_custom_topic():
     """Handle custom topic input and selection"""
@@ -466,16 +450,6 @@ def handle_custom_topic():
     st.session_state.form['is_custom_selected'] = bool(custom_text)
     save_response()
     st.rerun()
-
-def handle_option_deselection():
-    """Handle deselection of the currently selected option"""
-    if st.session_state.form['selected_option'] is not None:
-        prev_option = st.session_state.form['selected_option']
-        st.session_state.form['temp_counts'][prev_option] = st.session_state.form['temp_counts'].get(prev_option, 0) - 1
-        st.session_state.form['selected_option'] = None
-        save_response()
-        st.rerun()
-
 def create_option(num, text, user_selections):
     combined_counts = get_combined_counts()
     count = combined_counts.get(num, 0)
@@ -511,12 +485,50 @@ def create_option(num, text, user_selections):
         unsafe_allow_html=True
     )
     
-    if selected:
-        if container.button("إلغاء الاختيار", key=f"deselect_{num}"):
-            handle_option_deselection()
-    elif not disabled:
-        if container.button("اختر", key=f"select_{num}"):
+    col1, col2 = container.columns([1, 1])
+    
+    # Select button (only enabled if not disabled)
+    if not disabled:
+        if col1.button("اختر", key=f"select_{num}"):
             handle_option_selection(num)
+    
+    # Deselect button (only shown if this option is selected)
+    if selected:
+        if col2.button("إلغاء الاختيار", key=f"deselect_{num}"):
+            handle_deselection(num)
+    else:
+        # Empty space to maintain layout
+        col2.empty()
+
+
+def handle_deselection(option_num):
+    """Handle deselection of an option"""
+    if st.session_state.form['selected_option'] == option_num:
+        # Update counts for the deselected option
+        st.session_state.form['temp_counts'][option_num] = st.session_state.form['temp_counts'].get(option_num, 0) - 1
+        st.session_state.form['selected_option'] = None
+        save_response()
+        st.rerun()
+
+
+def handle_option_selection(option_num):
+    """Handle selection of a predefined option"""
+    # Clear any custom selection
+    st.session_state.form['custom_topic'] = ''
+    st.session_state.custom_topic_input = ''
+    st.session_state.form['is_custom_selected'] = False
+    
+    # Update counts for previous selection if exists
+    if st.session_state.form['selected_option'] is not None:
+        prev_option = st.session_state.form['selected_option']
+        st.session_state.form['temp_counts'][prev_option] = st.session_state.form['temp_counts'].get(prev_option, 0) - 1
+    
+    # Set new selection
+    st.session_state.form['selected_option'] = option_num
+    st.session_state.form['temp_counts'][option_num] = st.session_state.form['temp_counts'].get(option_num, 0) + 1
+    save_response()
+    st.rerun()
+
 
 def create_custom_topic_input():
     selected = (st.session_state.form['is_custom_selected'] and 
@@ -527,7 +539,7 @@ def create_custom_topic_input():
         container_class += " custom-topic-selected"
     
     st.markdown(f'<div class="{container_class}">', unsafe_allow_html=True)
-    st.markdown("<h2 class='header'>أو اكتب موضوعًا مخصصًا: </h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='header'> أو اكتب موضوعًا مخصصًا من عندك: </h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([4, 1])
     with col1:
@@ -655,6 +667,7 @@ def phone_verification_page():
         phone = st.text_input(
             "",
             key="phone_input",
+            placeholder="أدخل رقم هاتفك (مثال: 01234567890)",
             max_chars=11,
             label_visibility="collapsed"
         )
@@ -764,11 +777,25 @@ def main_form():
         
         # Check if it's time to refresh data (every 30 seconds)
         current_time = time.time()
-        if current_time - st.session_state.last_refresh > 10:
+        if current_time - st.session_state.last_refresh > 5:
             st.session_state.last_refresh = current_time
             st.rerun()
         with st.container():
-            st.subheader("المجموعة")
+            st.markdown("""
+<div style="text-align: center; font-size: 20px;">
+
+### كيفية استخدام النموذج:
+
+1 .إذا كنت بمفردك، يرجى ملء حقل الاسم الأول فقط.  
+2 .إذا كان لديك زميل في الفريق، يرجى ملء اسمه أيضًا.  
+3 .كل اختيار تقوم به سيتم حفظه تلقائيًا.  
+4 .يجب عليك الضغط على زر "اختيار" لتأكيد اختيارك، حتى في حالة الإجابة الحرة.  
+5 .لا بد من تقديم النموذج بالضغط على زر "إرسال" لتأكيد اختياراتك.  
+
+**ملاحظة:** التأكد من اتباع جميع الخطوات لضمان تسجيل إجاباتك بشكل صحيح.
+
+</div>
+""", unsafe_allow_html=True)
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown('<span class="required-field">اسم المخدوم رقم 1</span>', unsafe_allow_html=True)
@@ -777,7 +804,6 @@ def main_form():
                             value=st.session_state.form['first_name'],
                             key="first_name_input",
                             label_visibility="collapsed",
-                            placeholder="أدخل الاسم الأول"
                         )
             with col2:
                 st.markdown("اسم المخدوم رقم 2")
@@ -786,7 +812,6 @@ def main_form():
                             value=st.session_state.form['last_name'],
                             key="last_name_input",
                             label_visibility="collapsed",
-                            placeholder="أدخل الاسم الثاني"
                         )
             
             st.markdown("---")
@@ -888,7 +913,7 @@ def main():
     else:
         main_form()
 
-    time.sleep(10)
+    time.sleep(5)
     st.rerun()
 
 if __name__ == "__main__":
