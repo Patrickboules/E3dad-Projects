@@ -117,7 +117,7 @@ class TopicStep:
             <div class="option-container {'selected' if is_current else ''}
                  {'disabled' if disabled and not is_current else ''}"
                  id="option_{num}"
-                 onclick="handleClick({num})">
+                 onclick="handleClick('{topic_id}')">
                 <div class="option-header">
                     <div class="option-number">{num}.</div>
                     <div class="count-display">({count}/{MAX_LIMIT})</div>

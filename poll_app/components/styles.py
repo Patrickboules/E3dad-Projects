@@ -265,14 +265,15 @@ def option_click_js() -> str:
     """
     return """
 <script>
-function handleClick(optionNum) {
+function handleClick(topicId) {
     const buttons = parent.document.querySelectorAll('button[title="اختر"]');
-    buttons.forEach(button => {
-        if (button.getAttribute("data-testid") &&
-            button.getAttribute("data-testid").includes(optionNum)) {
+    for (const button of buttons) {
+        const testid = button.getAttribute("data-testid") || "";
+        if (testid === `select_${topicId}` || testid.endsWith(`-select_${topicId}`)) {
             button.click();
+            break;  // exact match found, stop — don't click anything else
         }
-    });
+    }
 }
 
 function enforceLightMode() {
