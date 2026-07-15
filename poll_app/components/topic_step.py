@@ -19,6 +19,7 @@ from .styles import option_click_js
 
 
 MAX_LIMIT = 3  # participants per topic (per-topic cap)
+REFRESH_INTERVAL = "3s"  # how often the topic list polls the DB for other users' changes
 
 
 class TopicStep:
@@ -26,7 +27,6 @@ class TopicStep:
 
     def __init__(self):
         self.db = db_manager
-        self.topics_data = CacheManager.get_topics_data()
 
     # ------------------------------------------------------------------ #
     # Public entry point
@@ -42,18 +42,10 @@ class TopicStep:
             unsafe_allow_html=True,
         )
 
-        if not self.topics_data:
-            st.warning("لا توجد مواضيع متاحة حالياً — تأكد من تهيئة قاعدة البيانات.")
-            return False
-
-        counts = self._combined_counts()
-
-        # Predefined topic cards
-        for num, (name, info) in enumerate(self.topics_data.items(), start=1):
-            self._render_topic_card(num, name, info, counts)
-
-        # Inject the card-click → button + light-mode-pinning JavaScript
-        html(option_click_js(), height=0)
+        # Everything inside is a fragment: it reruns on its own timer, so
+        # other users' selections/deselections show up here without a full
+        # page reload and without disturbing this user's own inputs.
+        self._render_topic_list()
 
         st.markdown("---")
 
@@ -61,13 +53,33 @@ class TopicStep:
         return self._render_continue()
 
     # ------------------------------------------------------------------ #
+    # Auto-refreshing topic list
+    # ------------------------------------------------------------------ #
+    @st.fragment(run_every=REFRESH_INTERVAL)
+    def _render_topic_list(self) -> None:
+        """Render every topic card; reruns every REFRESH_INTERVAL on its own."""
+        topics_data = CacheManager.get_topics_data()
+
+        if not topics_data:
+            st.warning("لا توجد مواضيع متاحة حالياً — تأكد من تهيئة قاعدة البيانات.")
+            return
+
+        counts = self._combined_counts(topics_data)
+
+        for num, (name, info) in enumerate(topics_data.items(), start=1):
+            self._render_topic_card(num, name, info, counts)
+
+        # Inject the card-click → button + light-mode-pinning JavaScript
+        html(option_click_js(), height=0)
+
+    # ------------------------------------------------------------------ #
     # Counts
     # ------------------------------------------------------------------ #
-    def _combined_counts(self) -> dict:
+    def _combined_counts(self, topics_data: dict) -> dict:
         """Merge the DB topic counts with optimistic `temp_counts` deltas."""
         counts = {
             name: info.get("count", 0)
-            for name, info in self.topics_data.items()
+            for name, info in topics_data.items()
         }
         temp = SessionManager.get("temp_counts", {})
         for name, delta in temp.items():
@@ -161,7 +173,7 @@ class TopicStep:
         SessionManager.set("temp_counts", temp)
 
         CacheManager.clear_topics_cache()
-        st.rerun()
+        st.rerun(scope="fragment")
         return True
 
     def _deselect_topic(self, name: str) -> bool:
@@ -180,12 +192,8 @@ class TopicStep:
         SessionManager.set("temp_counts", temp)
 
         CacheManager.clear_topics_cache()
-        st.rerun()
+        st.rerun(scope="fragment")
         return True
-
-    # ------------------------------------------------------------------ #
-
-
 
     # ------------------------------------------------------------------ #
     # Persistence + navigation
