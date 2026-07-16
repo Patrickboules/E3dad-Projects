@@ -99,10 +99,11 @@ class UserInfoStep:
         )
         year = next((k for k, v in year_labels.items() if v == year_display), None)
         name_ok = bool(name and name.strip())
+        year_ok = year is not None
 
-        if not name_ok:
+        if not name_ok or not year_ok:
             st.markdown(
-                '<div class="error-message">الرجاء إدخال الاسم</div>',
+                '<div class="error-message">الرجاء إدخال الاسم واختيار الفئة</div>',
                 unsafe_allow_html=True,
             )
 
@@ -111,7 +112,7 @@ class UserInfoStep:
             type="primary",
             use_container_width=True,
             key="continue_to_topic",
-            disabled=not name_ok,
+            disabled=not (name_ok and year_ok),
         ):
             return self._handle_continue(name, teammate_name, year)
 
