@@ -92,10 +92,18 @@ class DatabaseManager:
 
     # ==================== Topic Operations ====================
 
-    def get_all_topics(self) -> List[Dict[str, Any]]:
-        """Fetch all topic records (including their _id for topic_id refs)."""
+    def get_all_topics(self, year: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Fetch topic records.
+
+        Args:
+            year: If given ('year1' or 'year2'), only topics whose `groups`
+                array contains this value are returned. If omitted, all
+                topics are returned (unfiltered).
+        """
         try:
-            return list(self.db[DB_COLLECTION_TOPICS].find({}))
+            query = {"groups": year} if year else {}
+            return list(self.db[DB_COLLECTION_TOPICS].find(query))
         except Exception as e:
             print(f"Error fetching all topics: {e}")
             return []

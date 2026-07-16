@@ -51,7 +51,7 @@ class PollApp:
 
     def _render_header(self) -> None:
         """Render application header."""
-        st.title("📊 مشاريع اعداد 2025")
+        st.title("📊 مشاريع اعداد 2026")
         st.markdown("---")
 
     def _render_footer(self) -> None:

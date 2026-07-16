@@ -11,16 +11,21 @@ class CacheManager:
 
     @staticmethod
     @st.cache_data(ttl=5)  # Cache for 5 seconds (counts change frequently)
-    def get_topics_data() -> Dict[str, Dict[str, Any]]:
+    def get_topics_data(year: str) -> Dict[str, Dict[str, Any]]:
         """
-        Get cached topics data.
-        
+        Get cached topics data, filtered to the topics visible to `year`.
+
+        Args:
+            year: The requesting user's group ('year1' or 'year2'). Part of
+                  the cache key, so each group gets its own cached result —
+                  Year1 and Year2 never share a cache entry.
+
         Returns:
             Dictionary mapping topic names to their count and completion status
         """
         from ..database import db_manager
-        
-        topics = db_manager.get_all_topics()
+
+        topics = db_manager.get_all_topics(year=year)
         return {
             topic.get("topic_name", ""): {
                 "count": topic.get("count", 0),
@@ -34,5 +39,5 @@ class CacheManager:
 
     @staticmethod
     def clear_topics_cache() -> None:
-        """Clear the topics cache."""
+        """Clear the topics cache (all cached groups)."""
         CacheManager.get_topics_data.clear()

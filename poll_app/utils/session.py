@@ -18,6 +18,7 @@ class SessionManager:
         'teammate_name': '',     # optional (was last_name)
         'selected_option': None,  # token_name of the current selection, or None
         'submitted': False,
+        'year': None,
         'temp_counts': {},       # optimistic per-token count deltas,
         'just_loaded_existing_user': False,  # flag to indicate we just loaded an existing user
     }

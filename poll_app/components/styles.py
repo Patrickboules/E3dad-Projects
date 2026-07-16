@@ -31,6 +31,15 @@ THEME = """
         --custom-topic-selected: #BBDEFB;
     }
 
+    /* Center the main content */
+    .block-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        width: 100%;
+    }
+
     /* Force light mode */
     html, body, [class*="css"] {
         color: var(--text-color) !important;
@@ -164,20 +173,6 @@ THEME = """
         margin: 10px 0;
     }
 
-    /* Custom topic card */
-    .custom-topic-container {
-        background-color: var(--custom-topic-bg);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        border: 1px solid #BBDEFB;
-        transition: all 0.3s ease;
-    }
-    .custom-topic-selected {
-        background-color: var(--custom-topic-selected);
-        border-right: 5px solid var(--border-color);
-    }
-
     /* Phone verification container */
     .phone-container {
         max-width: 500px;
@@ -247,6 +242,41 @@ THEME = """
     [data-testid="stHeader"] { background-color: white !important; }
     [data-testid="stToolbar"] { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
+
+    /* Radio group (e.g. year/group selector) */
+    .stRadio {
+        margin: 12px 0 20px 0;
+    }
+    .stRadio > label {
+        margin-bottom: 10px !important;
+    }
+    .stRadio [role="radiogroup"] {
+        display: flex;
+        flex-direction: row-reverse; /* RTL: first option appears on the right */
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .stRadio [role="radiogroup"] label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 18px;
+        margin: 0 !important;
+        border: 1px solid #E0E0E0;
+        border-radius: 8px;
+        background-color: white;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .stRadio [role="radiogroup"] label:hover {
+        background-color: var(--hover-color);
+        border-color: var(--primary-color);
+    }
+    .stRadio [role="radiogroup"] label:has(input:checked) {
+        background-color: var(--selected-color);
+        border-color: var(--border-color);
+        font-weight: 600;
+    }
 </style>
 """
 

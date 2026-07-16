@@ -5,7 +5,7 @@ from poll_app.components import inject_styles
 
 # Page configuration
 st.set_page_config(
-    page_title="مشاريع اعداد 2025",
+    page_title="مشاريع اعداد 2026",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed",
