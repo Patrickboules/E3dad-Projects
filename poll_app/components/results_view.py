@@ -49,20 +49,14 @@ class ResultsView:
         teammate_row = (
             f'<p><strong>اسم الزميل:</strong> {teammate_name}</p>'
             if teammate_name.strip()
-            else ""
+            else "</>"
         )
 
         st.markdown(
             f"""
-            <div style="
-                padding: 1.5rem;
-                background: white;
-                border-radius: 10px;
-                margin: 1rem 0;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            ">
-                <h3 style='color: #1976d2; text-align: center;'>تفاصيل التسجيل</h3>
-                <div style="text-align: right;">
+            <div class="results-card">
+                <h3>تفاصيل التسجيل</h3>
+                <div class="results-card-content">
                     <p><strong>الاسم:</strong> {name}</p>
                     {teammate_row}
                     <p><strong>الموضوع المختار:</strong> {topic}</p>

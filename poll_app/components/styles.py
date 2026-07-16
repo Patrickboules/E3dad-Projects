@@ -45,7 +45,8 @@ THEME = """
         color: var(--text-color) !important;
         background-color: white !important;
     }
-    * { color: var(--text-color) !important; }
+* { color: var(--text-color) !important }
+
     .stApp { background-color: white !important; }
 
     /* Arabic RTL direction on the whole document */
@@ -190,7 +191,23 @@ THEME = """
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         background-color: #ffffff;
     }
-    .phone-header {
+    /* Results recap card */
+.results-card {
+    padding: 1.5rem;
+    background: white;
+    border-radius: 10px;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.results-card h3 {
+    color: #1976d2;
+    text-align: center;
+}
+.results-card-content {
+    text-align: right;
+}
+
+.phone-header {
         text-align: center;
         color: #2c3e50;
         margin-bottom: 25px;
