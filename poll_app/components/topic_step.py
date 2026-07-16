@@ -58,7 +58,8 @@ class TopicStep:
     @st.fragment(run_every=REFRESH_INTERVAL)
     def _render_topic_list(self) -> None:
         """Render every topic card; reruns every REFRESH_INTERVAL on its own."""
-        topics_data = CacheManager.get_topics_data()
+        year = SessionManager.get("year", None)
+        topics_data = CacheManager.get_topics_data(year)
 
         if not topics_data:
             st.warning("لا توجد مواضيع متاحة حالياً — تأكد من تهيئة قاعدة البيانات.")
@@ -162,7 +163,20 @@ class TopicStep:
         SessionManager.update({
             "selected_option": name,
         })
-        self._persist_user(selected_topic=name)
+
+        # Persist the user's selection
+        if not self._persist_user(selected_topic=name):
+            # Rollback the topic count changes and session state
+            self.db.update_topic_count(name, -1)
+            self._bump_temp(name, -1)
+            if current:
+                self.db.update_topic_count(current, +1)
+                self._bump_temp(current, +1)
+            SessionManager.update({
+                "selected_option": current,
+            })
+            st.error("Failed to save your selection. Please try again.")
+            return False
 
         # Clear temp counts for updated topics since we'll get fresh data from DB on rerun
         temp = SessionManager.get("temp_counts", {})
@@ -183,7 +197,17 @@ class TopicStep:
         SessionManager.update({
             "selected_option": None,
         })
-        self._persist_user(selected_topic="")
+
+        # Persist the user's deselection (setting topic to none)
+        if not self._persist_user(selected_topic=""):
+            # Rollback: restore the topic count and session state
+            self.db.update_topic_count(name, +1)
+            self._bump_temp(name, +1)
+            SessionManager.update({
+                "selected_option": name,
+            })
+            st.error("Failed to save your deselection. Please try again.")
+            return False
 
         # Clear temp count for updated topic since we'll get fresh data from DB on rerun
         temp = SessionManager.get("temp_counts", {})
