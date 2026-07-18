@@ -70,6 +70,9 @@ class TopicStep:
         for num, (name, info) in enumerate(topics_data.items(), start=1):
             self._render_topic_card(num, name, info, counts)
 
+        # Custom topic input section
+        self._render_custom_topic_input()
+
         # Inject the card-click → button + light-mode-pinning JavaScript
         html(option_click_js(), height=0)
 
@@ -92,6 +95,129 @@ class TopicStep:
         temp = SessionManager.get("temp_counts", {})
         temp[name] = temp.get(name, 0) + delta
         SessionManager.set("temp_counts", temp)
+
+    # ------------------------------------------------------------------ #
+    # Custom topic handling
+    # ------------------------------------------------------------------ #
+    def _render_custom_topic_input(self) -> None:
+        """Render the custom topic input field and selection controls."""
+        # Check if we need to clear the custom topic input
+        if st.session_state.get('clear_custom_topic_input_flag', False):
+            st.session_state.custom_topic_input = ""
+            st.session_state.clear_custom_topic_input_flag = False
+
+        custom_topic = SessionManager.get("custom_topic", "")
+        selected_option = SessionManager.get("selected_option", None)
+
+        st.markdown("---")
+        st.markdown("** أو اكتب موضوعاً خاصاً بك:**")
+
+        input_col, button_col1, button_col2 = st.columns([4, 1, 1])
+
+        with input_col:
+            custom_input = st.text_input(
+                "اكتب موضوعك الخاص هنا",
+                value=custom_topic or "",
+                placeholder="مثال: موضوع مخصص للحدث",
+                label_visibility="collapsed",
+                key="custom_topic_input"
+            )
+
+        with button_col1:
+            if st.button(
+                "اختر",
+                key="select_custom_topic",
+                disabled=not custom_input.strip(),
+                type="secondary",
+                use_container_width=True,
+            ):
+                self._select_custom_topic(custom_input.strip())
+
+        with button_col2:
+            if custom_topic:
+                if st.button(
+                    "إلغاء الاختيار",
+                    key="clear_custom_topic",
+                    type="secondary",
+                    use_container_width=True,
+                ):
+                    self._clear_custom_topic()
+
+        # Inject the card-click → button + light-mode-pinning JavaScript
+        html(option_click_js(), height=0)
+
+    def _select_custom_topic(self, topic_string: str) -> bool:
+        """Handle selection of a custom topic."""
+        # Release any predefined topic if currently selected
+        current_predefined = SessionManager.get("selected_option", None)
+        if current_predefined:
+            self.db.update_topic_count(current_predefined, -1)
+            self._bump_temp(current_predefined, -1)
+
+        # Set custom topic in session
+        SessionManager.update({
+            "selected_option": None,  # Clear predefined topic selection
+            "custom_topic": topic_string,
+        })
+
+        # Persist to database
+        if not self._persist_user(custom_topic=topic_string):
+            phone_number = SessionManager.get("phone_number", "")
+            if not phone_number:
+                st.error("جلسة غير صالحة. يرجى إعادة البدء.")
+            else:
+                st.error("فشل حفظ выборك. يرجى المحاولة مرة أخرى.")
+            # Rollback: restore predefined topic if we had one
+            if current_predefined:
+                self.db.update_topic_count(current_predefined, +1)
+                self._bump_temp(current_predefined, +1)
+                SessionManager.update({
+                    "selected_option": current_predefined,
+                    "custom_topic": None,
+                })
+            return False
+
+        # Clear temp counts for the predefined topic we released (if any)
+        if current_predefined:
+            temp = SessionManager.get("temp_counts", {})
+            if current_predefined in temp:
+                del temp[current_predefined]
+            SessionManager.set("temp_counts", temp)
+
+        # Clear widget session state for custom topic input to ensure text input updates correctly on rerun
+        st.session_state.clear_custom_topic_input_flag = True
+
+        CacheManager.clear_topics_cache()
+        st.rerun()
+        return True
+
+    def _clear_custom_topic(self) -> bool:
+        """Clear the currently selected custom topic."""
+        st.session_state.clear_custom_topic_input_flag = True
+
+        custom_topic = SessionManager.get("custom_topic", "")
+        if not custom_topic:
+            return True
+
+        # Persist the clearance to database
+        if not self._persist_user(custom_topic=""):
+            # Rollback: restore the custom topic
+            SessionManager.update({
+                "custom_topic": custom_topic,
+            })
+            st.error("فشل حذف الاختيار. يرجى المحاولة مرة أخرى.")
+            return False
+
+        # Clear custom topic from session
+        SessionManager.update({
+            "custom_topic": None,
+        })
+
+        # Clear widget session state for custom topic input to ensure text input clears
+
+        CacheManager.clear_topics_cache()
+        st.rerun()
+        return True
 
     # ------------------------------------------------------------------ #
     # Predefined topic cards
@@ -182,6 +308,9 @@ class TopicStep:
             })
             return False
 
+        # Clear widget session state for custom topic input to ensure text input reflects form state
+        st.session_state.clear_custom_topic_input_flag = True
+
         # Clear temp counts for updated topics since we'll get fresh data from DB on rerun
         temp = SessionManager.get("temp_counts", {})
         if current and current in temp:
@@ -203,7 +332,7 @@ class TopicStep:
         })
 
         # Persist the user's deselection (setting topic to none)
-        if not self._persist_user(selected_topic=""):
+        if not self._persist_user():
             # Rollback: restore the topic count and session state
             self.db.update_topic_count(name, +1)
             self._bump_temp(name, +1)
@@ -212,6 +341,9 @@ class TopicStep:
             })
             st.error("Failed to save your deselection. Please try again.")
             return False
+
+        # Clear widget session state for custom topic input to ensure text input reflects form state
+        st.session_state.clear_custom_topic_input_flag = True
 
         # Clear temp count for updated topic since we'll get fresh data from DB on rerun
         temp = SessionManager.get("temp_counts", {})
@@ -229,10 +361,13 @@ class TopicStep:
     def _persist_user(
         self,
         selected_topic: str = "",
+        custom_topic: str = None,
     ) -> bool:
         """Update the user's topic selection in the database using phone number.
         Preserves existing name and teammate_name fields.
-        For deselection (selected_topic empty), unsets the topic_id field.
+        For predefined topic selection: sets topic_id and unsets custom_topic.
+        For custom topic selection: sets custom_topic and unsets topic_id.
+        For deselection: unsets both topic_id and custom_topic.
         """
         # Get the phone number from session
         phone_number = SessionManager.get("phone_number", "")
@@ -243,41 +378,59 @@ class TopicStep:
         name = SessionManager.get("name", "")
         teammate_name = SessionManager.get("teammate_name", "")
 
-        if selected_topic:
-            # Find the topic ID corresponding to the selected topic name
-            topic_id = None
-            topics = self.db.get_all_topics()
-            for topic in topics:
-                if topic.get("topic_name") == selected_topic:
-                    topic_id = topic.get("_id")
-                    break
-            # Update phone_number, topic_id, and preserve name and teammate_name
-            user_data = {
-                "phone_number": phone_number,
-                "name": name,
-                "teammate_name": teammate_name,
-                "topic_id": topic_id,
-            }
-            return self.db.save_or_update_user(user_data)
-        else:
-            # Deselection: unset topic_id while keeping phone_number, name, teammate_name
-            try:
+        try:
+            # Check if we have a non-empty custom topic
+            has_custom_topic = custom_topic is not None and custom_topic.strip() != ""
+
+            if has_custom_topic:
+                # Custom topic selected: set custom_topic and unset topic_id
+                result = self.db.db["users"].update_one(
+                    {"phone_number": phone_number},
+                    {"$set": {
+                        "phone_number": phone_number,
+                        "name": name,
+                        "teammate_name": teammate_name,
+                        "custom_topic": custom_topic.strip()
+                    }, "$unset": {"topic_id": ""}}
+                )
+                return result.matched_count > 0 or result.upserted_id is not None
+            elif selected_topic:
+                # Predefined topic selected: set topic_id and unset custom_topic
+                # Find the topic ID corresponding to the selected topic name
+                topic_id = None
+                topics = self.db.get_all_topics()
+                for topic in topics:
+                    if topic.get("topic_name") == selected_topic:
+                        topic_id = topic.get("_id")
+                        break
+                # Update phone_number, topic_id, and preserve name and teammate_name
+                user_data = {
+                    "phone_number": phone_number,
+                    "name": name,
+                    "teammate_name": teammate_name,
+                    "topic_id": topic_id,
+                }
+                return self.db.save_or_update_user(user_data)
+            else:
+                # Deselection: unset both topic_id and custom_topic while keeping other fields
                 result = self.db.db["users"].update_one(
                     {"phone_number": phone_number},
                     {"$set": {
                         "phone_number": phone_number,
                         "name": name,
                         "teammate_name": teammate_name
-                    }, "$unset": {"topic_id": ""}}
+                    }, "$unset": {"topic_id": "", "custom_topic": ""}}
                 )
                 return result.matched_count > 0 or result.upserted_id is not None
-            except Exception as e:
-                print(f"Error unsetting topic_id for {phone_number}: {e}")
-                return False
+        except Exception as e:
+            print(f"Error persisting user for {phone_number}: {e}")
+            return False
 
     def _has_selection(self) -> bool:
-        """Whether the user currently has a selected topic."""
-        return SessionManager.get("selected_option", None) is not None
+        """Whether the user currently has a selected topic (predefined or custom)."""
+        selected_option = SessionManager.get("selected_option", None)
+        custom_topic = SessionManager.get("custom_topic", None)
+        return selected_option is not None or bool(custom_topic)
 
     def _render_continue(self) -> bool:
         """Render the continue-to-results button."""
