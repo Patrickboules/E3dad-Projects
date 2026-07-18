@@ -41,10 +41,15 @@ class ResultsView:
         teammate_name = SessionManager.get("teammate_name", "")
         phone = SessionManager.get("phone_number", "")
 
-        # 'selected_option' always exists in session state (defaults to None
-        # per project.md's DEFAULT_FORM_STATE), so dict.get()'s default arg
-        # never fires here — None must be coalesced explicitly.
-        topic = SessionManager.get("selected_option", None) or "غير محدد"
+        # Check for custom topic first (mutually exclusive with selected_option)
+        custom_topic = SessionManager.get("custom_topic", None)
+        if custom_topic:
+            topic = custom_topic
+        else:
+            # 'selected_option' always exists in session state (defaults to None
+            # per project.md's DEFAULT_FORM_STATE), so dict.get()'s default arg
+            # never fires here — None must be coalesced explicitly.
+            topic = SessionManager.get("selected_option", None) or "غير محدد"
 
         teammate_row = (
             f'<p><strong>اسم الزميل:</strong> {teammate_name}</p>'
