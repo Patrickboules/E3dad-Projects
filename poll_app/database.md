@@ -21,6 +21,10 @@ bsonType: 'string'
 topic_id: {
 bsonType: 'objectId',
 description: 'reference to topics collection'
+},
+custom_topic: {
+bsonType: 'string',
+description: 'optional custom topic (mutually exclusive with topic_id)'
 }
 }
 }

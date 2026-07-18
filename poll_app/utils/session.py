@@ -17,6 +17,7 @@ class SessionManager:
         'name': '',              # required (was first_name)
         'teammate_name': '',     # optional (was last_name)
         'selected_option': None,  # token_name of the current selection, or None
+        'custom_topic': None,    # user-typed custom topic (mutually exclusive with selected_option)
         'submitted': False,
         'year': None,
         'temp_counts': {},       # optimistic per-token count deltas,

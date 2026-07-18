@@ -82,14 +82,19 @@ class PhoneStep:
         existing_user = self.db.get_user_by_phone(cleaned)
 
         if existing_user:
-            # The schema requires topic_id, so an existing user always has a
-            # topic. Rehydrate the topic name from the stored topic_id.
+            # Check if user has a custom_topic or topic_id
             topic_name = ""
-            topic_id = existing_user.get("topic_id")
-            if topic_id:
-                topic_doc = self.db.get_topic_by_id(topic_id)
-                if topic_doc:
-                    topic_name = topic_doc.get("topic_name", "")
+            custom_topic = existing_user.get("custom_topic")
+            if custom_topic:
+                # Use custom topic directly
+                topic_name = custom_topic
+            else:
+                # Fallback to topic_id lookup for predefined topics
+                topic_id = existing_user.get("topic_id")
+                if topic_id:
+                    topic_doc = self.db.get_topic_by_id(topic_id)
+                    if topic_doc:
+                        topic_name = topic_doc.get("topic_name", "")
 
             # Show existing user data for confirmation
             self._show_existing_data_card(existing_user, topic_name)
@@ -105,7 +110,11 @@ class PhoneStep:
                 "name": existing_user.get("name") or "",
                 "teammate_name": existing_user.get("teammate_name") or "",
                 "selected_option": topic_name or None,
+                "custom_topic": custom_topic or None,
             })
+            # Clear widget session state for custom topic input to ensure text input reflects form state
+            if "custom_topic_input" in st.session_state:
+                del st.session_state.custom_topic_input
             return True
 
                 # New user: advance to the user-info step on a blank form.
@@ -116,6 +125,9 @@ class PhoneStep:
             "teammate_name": "",
             "selected_option": None,
         })
+        # Clear widget session state for custom topic input to ensure text input reflects form state
+        if "custom_topic_input" in st.session_state:
+            del st.session_state.custom_topic_input
         return True
 
     def _show_existing_data_card(self, user: dict, ticket_name: str) -> None:
